@@ -11,22 +11,34 @@ function buildRenderGraph(mrauth_id) {
 
   console.log(`Building graph for mrauth_id: ${mrauth_id}`);
 
-
-  //making subgraph data
-  const myGraphData = created(mrauth_id);
-
-  //rendering
-
-  if (myGraphData && myGraphData.size > 0) {
-    console.log(`Data loaded for ${myGraphData.size} nodes. Rendering...`);
-    render(myGraphData);
-  } else {
+  //making subgraph data - now returns both graphData and rootInternalId
+  const result = created(mrauth_id);
+  
+  if (!result) {
     console.error(`Failed to create graph data for ID: ${mrauth_id}`);
+    return;
   }
+
+  const { graphData: myGraphData, rootInternalId } = result;
+
+  // FIX: Verify we have both valid data and a valid root ID
+  if (!myGraphData || myGraphData.size === 0) {
+    console.error(`No graph data created for ID: ${mrauth_id}`);
+    return;
+  }
+
+  if (!rootInternalId) {
+    console.error(`No root internal ID found for ID: ${mrauth_id}`);
+    return;
+  }
+
+  console.log(`Data loaded for ${myGraphData.size} nodes. Root ID: ${rootInternalId}. Rendering...`);
+  
+  // FIX: Now we have the correct rootInternalId directly from the created() function
+  render(myGraphData, rootInternalId);
 }
 
 // html submission for the search query
-
 function handleSearch(event) {
   event.preventDefault(); // stops the form from reloading the page
 
@@ -38,7 +50,7 @@ function handleSearch(event) {
   console.log(`Searching for name: ${queryName}`);
 
   const mrauth_id = findIdByName(queryName);
-  //if the iD exists, then we should render the graph
+  //if the ID exists, then we should render the graph
   if (mrauth_id) {
     buildRenderGraph(mrauth_id);
   } else {
@@ -57,44 +69,11 @@ async function main() {
     if (form) {
         form.addEventListener("submit", handleSearch);
     } else {
-        console.error("Could not find singe_name_form in HTML.");
+        console.error("Could not find single_name_form in HTML.");
     }
 
     //default render is The Dio Holl fella
-
     buildRenderGraph("462675");
 }
 
-// window.addEventListener('load', main);
 main();
-
-// async function initGraph() {
-//   let rootMrauthId = "462675"; //magic number fuck my life
-
-//   console.log("1. fetching graph data from ID: ${rootMrauthId}");
-
-//   const myGraphData = await created(rootMrauthId);
-
-//   if (myGraphData && myGraphData.size > 0) {
-//     console.log("2. data loaded successfully, rendering graph");
-//     render(myGraphData);
-//   }
-//   else {
-//     console.error("failed to load or create graph data, graph will not be rendered")
-//   }
-// }
-
-// initGraph();
-
-// // 1. Call created() to get your data
-// const myGraphData = created();
-
-// // 2. Check if it worked
-// if (myGraphData && myGraphData.size > 0) {
-//     // 3. Pass the data to render()
-//     render(myGraphData);
-// } else {
-//     console.error("Failed to load or create graph data. Graph will not be rendered.");
-// }
-
-

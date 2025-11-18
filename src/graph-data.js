@@ -82,55 +82,23 @@ function addNodeToMap(map, dataCache, id) {
         return;
     }
 
-    // const adviseeList = academic["student_data"]["descendants"]["advisees"] || [];
-    // const edges = adviseeList.filter(id => id && id.length > 0);
+    // Safely get the degrees array, or an empty one
+    let year = "N/A"; // Default year
     
-    // // we have to deal with both masters and phd degrees fml
-    // const allDegrees = academic["student_data"]["degrees"] || [];
-    // const phdDegree = allDegrees.find(degree => degree.degree_type === "Ph.D.");    
-    //  //use the phd when available
-    // const degreeData = phdDegree || null;
-    
-    // const inputs = degreeData ? Object.keys(degreeData["advised by"] || {}) : [];
+    const degrees = academic?.student_data?.degrees || [];
 
-    // // make sure the variable names match
-    // // const yearAward = degreeData ? degreeData["degree_year"] : "N/A";
-    // let year = "2000";
-    // const degrees = academic?.student_data?.degrees;
-
-//     if (degrees && degrees.length > 0) {
-//     // 1. Try to find a Ph.D. degree first
-//     const phdDegree = degrees.find(d => d.degree_type === "Ph.D.");
-    
-//     if (phdDegree && phdDegree.degree_year) {
-//       year = phdDegree.degree_year;
-//     } else {
-//       // 2. If no Ph.D., fall back to the last degree in the list
-//       const lastDegree = degrees[degrees.length - 1];
-//       if (lastDegree && lastDegree.degree_year) {
-//         year = lastDegree.degree_year;
-//       }
-//     }
-//   }
-
-// Gemini slop: Safely get the degrees array, or an empty one
-  let year = "N/A"; // Default year
-  
-  // Safely get the degrees array, or an empty one
-  const degrees = academic?.student_data?.degrees || [];
-
-  if (degrees.length > 0) {
-      // 1. Try to find a Ph.D. degree
-      const phdDegree = degrees.find(d => d.degree_type === "Ph.D.");
-      
-      if (phdDegree && phdDegree.degree_year) {
-          year = phdDegree.degree_year;
-      } else {
-          // 2. If no Ph.D., fall back to the last degree in the list
-          const lastDegree = degrees[degrees.length - 1];
-          year = lastDegree?.degree_year || "N/A"; // Fallback to N/A
-      }
-  }
+    if (degrees.length > 0) {
+        // 1. Try to find a Ph.D. degree
+        const phdDegree = degrees.find(d => d.degree_type === "Ph.D.");
+        
+        if (phdDegree && phdDegree.degree_year) {
+            year = phdDegree.degree_year;
+        } else {
+            // 2. If no Ph.D., fall back to the last degree in the list
+            const lastDegree = degrees[degrees.length - 1];
+            year = lastDegree?.degree_year || "N/A"; // Fallback to N/A
+        }
+    }
 
     const details = {
         familyName: academic.family_name || "",
@@ -140,33 +108,31 @@ function addNodeToMap(map, dataCache, id) {
         internal_id: id
     };
 
-    // get advisees and filtering out empty strings
+    // get advisees and filtering out empty strings and null values
     const adviseeIds = academic.student_data.descendants.advisees
     .map(adviseeVal => {
-      
         if (Array.isArray(adviseeVal)) {
             if (adviseeVal.length > 0) { //ensures it is not empty
                 return String(adviseeVal[0]).trim();
             }
-
             return null;
         }
-
+        return null;
     })
-    //.filter(id => id && id.trim() !== "");
+    .filter(id => id !== null && id.trim() !== ""); // FIX: Filter out null and empty values
 
     //extracting the advisors/parents
     const advisorIds = [];
-     academic.student_data.degrees.forEach(degree => {
+    academic.student_data.degrees.forEach(degree => {
         if (degree["advised by"]) {
-        // get all advisor IDs from this degree and add them
+            // get all advisor IDs from this degree and add them
             Object.keys(degree["advised by"]).forEach(id => {
-            if (id && id.trim() !== "") {
-          advisorIds.push(id);
+                if (id && id.trim() !== "") {
+                    advisorIds.push(id);
+                }
+            });
         }
-      });
-    }
-  });
+    });
 
     map.set(id, {
         edges: adviseeIds,
@@ -181,6 +147,7 @@ function addNodeToMap(map, dataCache, id) {
     - Fetches the JSON
     - Finds the matching internal ID
     - Builds a small map for that person and their children
+    - Returns both the map AND the internal ID of the root
 */
 export function created(rootMrauthId) {
 
@@ -192,33 +159,6 @@ export function created(rootMrauthId) {
     }
     
     let myMap = new Map();
-    // let allData; // This will hold our data
-
-///////////////////////////////////////
-    /*
-        Old code that used the asynchronous fetch
-    */
-    // try {
-    //     const response = await fetch("../sample-data/all_academics_merged_backup.json");
-    //     if (!response.ok) {
-    //         throw new Error(`HTTP error! status: ${response.status}`);
-    //     }
-        
-    //     // assign the fetched data DIRECTLY to allData
-    //     allData = await response.json(); 
-    //     console.log("Fetched JSON data successfully.");
-
-
-    // } catch(e) {
-    //     console.error("Failed to fetch/parse JSON data: ", e);
-    //     return null;
-    // }
-
-    // if (!allData) {
-    //     console.error("Data object is empty.");
-    //     return null;
-    // }
-///////////////////////////////
 
     // This loop finds the internal ID from the mrauth_id
     let rootId = null;
@@ -249,13 +189,12 @@ export function created(rootMrauthId) {
             addNodeToMap(myMap, dataCache, adviseeId);
         }
 
-        //
-        //loop to go UP and add parents (advisors)
-        //
+        // loop to go UP and add parents (advisors)
         for (const advisorId of rootNode.advisors) {
             addNodeToMap(myMap, dataCache, advisorId);
         }
-
     }
-    return myMap;
-};
+    
+    // FIX: Return both the map and the root internal ID
+    return { graphData: myMap, rootInternalId: rootId };
+}
