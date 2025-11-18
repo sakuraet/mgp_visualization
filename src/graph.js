@@ -19,6 +19,8 @@
         
         //we actually make the graph, initially empty
         const graph = new dagreD3.graphlib.Graph({}).setGraph({});
+
+        // add all nodes
             for (const [key, value] of graphData.entries()) {
                 // set up a node for each respective entry in the data
                 graph.setNode(key, {
@@ -30,22 +32,46 @@
         //gets the edges that we have in the data
         for (const [key, value] of graphData.entries()) {
 
-            value.edges.forEach(edge => {
+            //logic to draw the downstream/children
 
-                //check to see if graph does not have a node
-                if (!graph.hasNode(edge)) {
-                    //make random node so the edge can at least be there, ideally it would be another node in itself
+            value.edges.forEach(adviseeId => {
 
-                    //MUST CHANGE
-                    graph.setNode(edge, {label: `${edge}`});
+                //we only include the edge if the advisee is in the map, data is limited
+                if (graphData.has(adviseeId)) {
+                    graph.setEdge(key, adviseeId, {
+                        arrowhead: "normal",
+                        curve: d3.curveBasis,
+                        label: " "
+                    });
                 }
-
-                graph.setEdge(key, edge, {
-                    arrowhead: "normal", //aesthetics behind the arrow in digraph
-                    curve: d3.curveBasis,
-                    label: " "
-                });
             });
+
+            value.advisors.forEach(advisorId => {
+                if (graphData.has(advisorId)) {
+                    graph.setEdge(advisorId, key, {
+                        arrowhead: "normal",
+                        curve: d3.curveBasis,
+                        label: " "
+                    });
+                }
+            });
+
+            // value.edges.forEach(edge => {
+
+            //     //check to see if graph does not have a node
+            //     if (!graph.hasNode(edge)) {
+            //         //make random node so the edge can at least be there, ideally it would be another node in itself
+
+            //         //MUST CHANGE
+            //         graph.setNode(edge, {label: `${edge}`});
+            //     }
+
+            //     graph.setEdge(key, edge, {
+            //         arrowhead: "normal", //aesthetics behind the arrow in digraph
+            //         curve: d3.curveBasis,
+            //         label: " "
+            //     });
+            // });
          }
 
         // now setting up the scene using d3 for the visual
@@ -66,10 +92,13 @@
 
 
         //centering the visual
-
+        const svgWidth = svg.node().getBoundingClientRect().width;
         const initialScale = 0.75;
+        // svg.call(zoom.transform, d3.zoomIdentity
+        //     .translate((svg.attr("width") - graph.graph().width * initialScale) / 2, 20)
+        //     .scale(initialScale));
         svg.call(zoom.transform, d3.zoomIdentity
-            .translate((svg.attr("width") - graph.graph().width * initialScale) / 2, 20)
+            .translate((svgWidth - graph.graph().width * initialScale) / 2, 20)
             .scale(initialScale));
 
         svg.attr('height', graph.graph().height * initialScale + 40);

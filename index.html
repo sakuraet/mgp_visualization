@@ -15,12 +15,13 @@
             <div class="spinner"></div>
          </div>
          <div id="hide_while_loading">
-            <div id="single_name_form">
+            <form id="single_name_form">
                <p>
-                  <label>Enter a name [this doesn't work yet]</label>
-                  <input id="single_name_input" placeholder="Enter a name" autocomplete="off" />
+                  <label>Enter a name: 
+                  <input id="single_name_input" placeholder="Dio Lewis Holl" autocomplete="off" /> </label>
+                  <button type = "submit">Search</button>
                </p>
-            </div>
+            </form>
          </div>
          <!-- little thing to border the drawing -->
          <div id="container">
@@ -30,8 +31,7 @@
 
       <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.4/dagre-d3.min.js"></script>
-      <!-- <script src="build/main.bundle.js"></script> -->
-      <!-- <script src = "src/graph-test.js"></script> -->
+      <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/fuzzyset.js/1.0.7/fuzzyset.min.js"></script>      <script src = "src/graph-test.js"></script> -->
       <script type = "module" src = "src/main.js"></script>
 
    </body>
