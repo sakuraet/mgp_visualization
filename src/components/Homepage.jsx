@@ -47,9 +47,10 @@ function Homepage() {
             </p>
             <p>
               <strong>Color Gradient</strong>: To make the relationships easy to identify, a mathematician's{' '}
-              <span style={{ color: '#1f261a' }}>advisor</span> nodes use a darker shade,{' '}
-              <span style={{ color: '#5e734e' }}>cohort peer and focus</span> nodes use a medium shade, and{' '}
-              <span style={{ color: '#9dc183' }}>student</span> nodes use a lighter shade.
+              <span style={{ color: '#2d5016', fontWeight: 'bold' }}>advisor</span> nodes use a darker shade,{' '}
+              <span style={{ color: '#5e734e', fontWeight: 'bold' }}>cohort peer</span> and{' '}
+              <span style={{ color: '#5e734e', fontWeight: 'bold' }}>focus</span> nodes use a medium shade, and{' '}
+              <span style={{ color: '#9dc183', fontWeight: 'bold' }}>student</span> nodes use a lighter shade.
             </p>
           </div>
         </div>
