@@ -10,7 +10,6 @@ function Homepage() {
         </header>
 
         <div className="visualization-card">
-          <h2 className="viz-title">Academic Genealogy Network</h2>
           <div className="viz-placeholder">
             <div className="placeholder-content">
               <div className="placeholder-icon">📊</div>

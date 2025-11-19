@@ -26,7 +26,7 @@ function About() {
                 <h3>Kevin Phan</h3>
                 <p className="team-role">Undergraduate Student in Mathematics & Economics</p>
                 <p className="team-bio">
-                  Constructed the node-link visualization and its features.
+                  Developed the node-link visualization and implemented its interactive features.
                 </p>
               </div>
 
@@ -39,7 +39,7 @@ function About() {
                 <h3>Sakura Takahashi</h3>
                 <p className="team-role">Undergraduate Student in Mathematics</p>
                 <p className="team-bio">
-                  Obtained and cleaned the data for visualization.
+                  Obtained, cleaned, and prepared the data for visualization.
                 </p>
               </div>
 
@@ -52,7 +52,7 @@ function About() {
                 <h3>Anne Dominique Malig</h3>
                 <p className="team-role">Undergraduate Student in Mathematics</p>
                 <p className="team-bio">
-                  Created the website and its features.
+                  Designed and organized the overall structure and layout of the website.
                 </p>
               </div>
             </div>
@@ -61,20 +61,20 @@ function About() {
           <section className="about-section">
             <h2>About Our Project</h2>
             <p>
-              Univsersities bring together faculty from diverse academic
-              and cultural backgrounds who mentor graduate students that
-              go on to have their own careers. The goal of this project is
-              to illustrate the mathematical genealogy across generations.
-              By doing so, it highlights how interconnected mathematicians
-              are throughout their vast academic network.
+              Universities bring together faculty from diverse academic
+              and cultural backgrounds, who go on to mentor graduate students that
+              build their own careers. The goal of this project is
+              to visualize the mathematical genealogy that emerges across generations.
+              By doing so, it reveals the deep interconnectedness of mathematicians
+              throughout their vast academic network.
             </p>
           </section>
 
           <section className="about-section">
             <h2>About The Code</h2>
             <p>
-              The code for this entire project, including data retrieval, data visualization, and 
-              website creation, can be found in our{' '}
+              All code used in this project, which includes data retrieval, data visualization, and 
+              website creation, can be accessed in our{' '}
               <a 
                 href="https://github.com/sakuraet/mgp_visualization" 
                 target="_blank" 
