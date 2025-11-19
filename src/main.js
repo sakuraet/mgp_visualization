@@ -11,7 +11,7 @@ function buildRenderGraph(mrauth_id) {
 
   console.log(`Building graph for mrauth_id: ${mrauth_id}`);
 
-  //making subgraph data - now returns both graphData and rootInternalId
+  // SAKURA'S FIX: making subgraph data 
   const result = created(mrauth_id);
   
   if (!result) {
@@ -21,7 +21,7 @@ function buildRenderGraph(mrauth_id) {
 
   const { graphData: myGraphData, rootInternalId } = result;
 
-  // FIX: Verify we have both valid data and a valid root ID
+  // SAKURA'S FIX: verify we have both valid data and a valid root ID
   if (!myGraphData || myGraphData.size === 0) {
     console.error(`No graph data created for ID: ${mrauth_id}`);
     return;
@@ -34,7 +34,7 @@ function buildRenderGraph(mrauth_id) {
 
   console.log(`Data loaded for ${myGraphData.size} nodes. Root ID: ${rootInternalId}. Rendering...`);
   
-  // FIX: Now we have the correct rootInternalId directly from the created() function
+  // SAKURA'S FIX: correct rootInternalId directly from the created() function
   render(myGraphData, rootInternalId);
 }
 

@@ -82,9 +82,10 @@ function addNodeToMap(map, dataCache, id) {
         return;
     }
 
-    // Safely get the degrees array, or an empty one
+    // Gemini slop: Safely get the degrees array, or an empty one
     let year = "N/A"; // Default year
     
+    // Safely get the degrees array, or an empty one
     const degrees = academic?.student_data?.degrees || [];
 
     if (degrees.length > 0) {
@@ -108,6 +109,7 @@ function addNodeToMap(map, dataCache, id) {
         internal_id: id
     };
 
+    // SAKURAS FIX: filter out null and empty values
     // get advisees and filtering out empty strings and null values
     const adviseeIds = academic.student_data.descendants.advisees
     .map(adviseeVal => {
@@ -195,6 +197,6 @@ export function created(rootMrauthId) {
         }
     }
     
-    // FIX: Return both the map and the root internal ID
+    // SAKURA'S FIX: return both the map and the root internal ID
     return { graphData: myMap, rootInternalId: rootId };
 }

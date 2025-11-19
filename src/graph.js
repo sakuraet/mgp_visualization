@@ -3,13 +3,17 @@
 /*
  render takes the graph data and then renders it using d3 with color coding
 */
+
+//  // SAKURA'S FIX: THIS IS ALL CLAUDE SLOP FOR NOW
+
+
 export function render(graphData, rootId) {
     if (graphData == null || graphData.size == 0) {
         console.error("No data");
         return;
     }
     
-    // FIX: Verify rootId is valid
+    // verify rootId is valid
     if (!rootId) {
         console.error("No root ID provided");
         return;
@@ -28,6 +32,7 @@ export function render(graphData, rootId) {
     console.log(`Calculated levels for ${levels.size} nodes`);
     
     // Define color schemes
+    // LATER ON: (sage green gradient) #1f261a #3e4d34 #5e734e #7d9a68 #9dc183
     const colors = {
         root: "#5e734e",        
         ancestor: "#1f261a",    
@@ -36,9 +41,6 @@ export function render(graphData, rootId) {
         gen3: "#d4e157",
         gen4: "#fff176"
     };
-    // LATER ON: #1f261a #3e4d34 #5e734e #7d9a68 #9dc183
-
-
 
     // We actually make the graph, initially empty
     const graph = new dagreD3.graphlib.Graph({}).setGraph({
