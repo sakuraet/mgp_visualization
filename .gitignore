@@ -1,2 +1,33 @@
+# Data too big
 sample-data/
+
+# Dependencies
 node_modules/
+server/node_modules/
+
+# Environment variables
+.env
+server/.env
+
+# Build outputs
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor directories
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
