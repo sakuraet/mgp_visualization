@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import './Homepage.css'
 
 function Homepage() {
@@ -12,14 +12,8 @@ function Homepage() {
         <div className="visualization-card">
           <div className="viz-placeholder">
             <div className="placeholder-content">
-              <div className="placeholder-icon">📊</div>
               <h3>Node-Link Diagram</h3>
               <p>Interactive visualization will appear here</p>
-              <div className="placeholder-details">
-                <span>• Advisor-Student Relationships</span>
-                <span>• Interactive Node Exploration</span>
-                <span>• Dynamic Network Layout</span>
-              </div>
             </div>
           </div>
         </div>
