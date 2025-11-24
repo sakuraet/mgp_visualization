@@ -1,11 +1,14 @@
+import * as d3 from 'd3';
+import * as dagreD3 from 'dagre-d3';
+
 // Enhanced graph rendering with color gradients and stats panel
 /*
  render takes the graph data and then renders it using d3 with color coding
 */
 
-// SAKURA'S FIX: THIS IS ALL CLAUDE SLOP FOR NOW
+// SAKURA: THIS IS ALL CLAUDE SLOP REVISED FOR NOW
 export function render(graphData, rootId) {
-    if (graphData == null || graphData.size == 0) {
+    if (graphData == null || graphData.size === 0) {
         console.error("No data");
         return;
     }
@@ -23,12 +26,12 @@ export function render(graphData, rootId) {
     
     console.log(`Rendering graph with root ID: ${rootId}`);
     
-    // Calculate generation levels (depth from root)
+    // generation levels (go up down)
     const levels = calculateLevels(graphData, rootId);
     
     console.log(`Calculated levels for ${levels.size} nodes`);
     
-    // Define color schemes
+    // SAKURA: color schemes
     // LATER ON: (sage green gradient) #1f261a #3e4d34 #5e734e #7d9a68 #9dc183
     const colors = {
         root: "#5e734e",        
@@ -39,40 +42,39 @@ export function render(graphData, rootId) {
         gen4: "#fff176"
     };
 
-    // We actually make the graph, initially empty
+    // make the graph, initially empty
     const graph = new dagreD3.graphlib.Graph({}).setGraph({
-        rankdir: "TB",    // Top to Bottom
-        nodesep: 80,      // Horizontal spacing
-        ranksep: 80,      // Vertical spacing
+        rankdir: "TB",    // top to Bottom
+        nodesep: 80,      // horizontal spacing
+        ranksep: 80,      // vertical spacing
         marginx: 20,
         marginy: 20
     });
 
-    // Add all nodes with color coding
+    // add all nodes with color
     for (const [key, value] of graphData.entries()) {
         const level = levels.get(key);
         let nodeColor = colors.root;
 
         // elementary check to see if the detail data is there
         if (!value || !value.detail) {
-            console.warn(`Skipping node ${storeKey}: Missing 'detail' data.`);
+            console.warn(`Skipping node ${key}: Missing 'detail' data.`);
             continue;
         }
-            
         
-        // FIX: Better handling of undefined levels with debug logging
+        // FIX: decendant goes down for sus children
         if (level === undefined) {
             console.warn(`No level calculated for node ${key} (${value.detail.givenName} ${value.detail.familyName})`);
-            nodeColor = colors.gen5; // Default color
+            nodeColor = colors.gen5; 
         } else if (key === rootId) {
             nodeColor = colors.root;
             console.log(`Root node ${key}: level ${level}, color ${nodeColor}`);
         } else if (level < 0) {
-            // Ancestors (advisors)
+            // ancestors (advisors)
             nodeColor = colors.ancestor;
             console.log(`Ancestor node ${key}: level ${level}, color ${nodeColor}`);
         } else {
-            // Descendants - gradient gets lighter
+            // descendants (colors gets lighter)
             const genColors = [colors.gen1, colors.gen2, colors.gen3, colors.gen4, colors.gen5];
             nodeColor = genColors[Math.min(level - 1, genColors.length - 1)] || colors.gen5;
             console.log(`Descendant node ${key}: level ${level}, color ${nodeColor}`);
@@ -88,11 +90,11 @@ export function render(graphData, rootId) {
         });
     }
 
-    // Gets the edges that we have in the data
+    // gets the edges that we have in the data
     for (const [key, value] of graphData.entries()) {
-        // Logic to draw the downstream/children
+        // down children
         value.edges.forEach(adviseeId => {
-            // We only include the edge if the advisee is in the map
+            // only include the edge if the advisee is in the map
             if (graphData.has(adviseeId)) {
                 graph.setEdge(key, adviseeId, {
                     arrowhead: "normal",
@@ -117,32 +119,32 @@ export function render(graphData, rootId) {
         });
     }
 
-    // Now setting up the scene using d3 for the visual
+    // set up scene
     const svg = d3.select("div#container").select("svg"),
         inner = svg.select("g");
 
-    // Clear previous content
+    // clear previous 
     inner.selectAll("*").remove();
 
-    // Zoom feature
+    // zoom feature
     const zoom = d3.zoom().on("zoom", function(event) {
         inner.attr("transform", event.transform);
     });
     svg.call(zoom);
 
-    // Make render obj
+    // render obj
     const renderer = new dagreD3.render();
-    // Run render and use the graph data to draw graph
+    // run render to draw graph
     renderer(inner, graph);
 
-    // Add click handlers for nodes
+    // add click handlers for nodes
     svg.selectAll("g.node")
         .style("cursor", "pointer")
         .on("click", function(event, nodeId) {
             const node = graph.node(nodeId);
             showStatsPanel(node.detail, graphData, nodeId);
             
-            // Highlight clicked node
+            // highlight clicked node
             svg.selectAll("g.node rect")
                 .style("stroke-width", "2px");
             d3.select(this).select("rect")
@@ -155,110 +157,141 @@ export function render(graphData, rootId) {
         //         .style("opacity", "0.8");
         // })
         //mousever feature to give additional information on node
-        .on("mouseover", function(event, nodeId) { //d is the "ID" in this case, the internal one
 
-                const targetElement = d3.select(event.currentTarget); //focuses only on the hover
-                targetElement.raise(); //raises the hover feature over the nodes
-                
-                // NEW DEFENSE: Ensure 'this' is a valid DOM element before selecting it
-                if (!this) return; 
-
-               
-                // 1. Correctly retrieve the node data object
-                const lookupId = nodeId; 
-                const nodeValue = graph.node(lookupId);
-
-                // 2. Perform the defensive check on the stored property
-                if (!nodeValue || !nodeValue.detail) {
-                    console.error("Missing custom data for node ID:", lookupId);
-                    return;
-                }
-                
-                const nodeData = nodeValue.detail;
-                
-                // Remove old tooltips before creating a new one
-                targetElement.selectAll(".hover-tooltip-group").remove();
-
-
-                const tooltipGroup = targetElement.append("g")
-                    .attr("class", "hover-tooltip-group")
-                    .attr("transform", "translate(50, -50)");
-
-                const tooltipText = tooltipGroup.append("text")
-                    .attr("x", 30) //5
-                    .attr("y", -20) //5
-                    .attr("text-anchor", "start")
-                    .style("font-size", "12px")
-                    .style("fill", "#333");
-
-                // 4. Bind the tooltip data
-                tooltipText.selectAll("tspan")
-                // Bind the data array, using || 'N/A' for safety
+        // SAKURA: hover feature for react or yea
+        .on("mouseover", function(event, nodeId) {
+            const targetElement = d3.select(event.currentTarget);
+            targetElement.raise();
+            
+            // ensure it's a valid DOM element 
+            if (!this) return;
+            
+            // retrieve the node data object
+            const lookupId = nodeId; 
+            const nodeValue = graph.node(lookupId);
+            
+            if (!nodeValue || !nodeValue.detail) {
+                console.error("Missing custom data for node ID:", lookupId);
+                return;
+            }
+            
+            const nodeData = nodeValue.detail;
+            
+            // grab full node data from graphData for advisors and descendants
+            const fullNode = graphData.get(lookupId);
+            
+            // advisor names
+            const advisorNames = fullNode.advisors
+                .map(id => {
+                    const advisor = graphData.get(id);
+                    return advisor ? `${advisor.detail.givenName} ${advisor.detail.familyName}` : "Unknown";
+                })
+                .join(", ") || "N/A";
+            
+            // count descendants
+            const descendantCount = fullNode.edges.filter(id => graphData.has(id)).length;
+            
+            // remove old tooltips before a new one
+            targetElement.selectAll(".hover-tooltip-group").remove();
+            
+            const tooltipGroup = targetElement.append("g")
+                .attr("class", "hover-tooltip-group")
+                .attr("transform", "translate(50, -50)");
+            
+            const tooltipText = tooltipGroup.append("text")
+                .attr("x", 30)
+                .attr("y", -20)
+                .attr("text-anchor", "start")
+                .style("font-size", "13px")
+                .style("fill", "#333")
+                .style("font-weight", "500");
+            
+            // bind the tooltip data
+            tooltipText.selectAll("tspan")
                 .data([
-                    `Family Name: ${nodeData.familyName || 'N/A'}`,
-                    `Given Name: ${nodeData.givenName || 'N/A'}`,
-                    `Year Awarded: ${nodeData.yearAwarded || 'N/A'}`,
-                    `MRAUTH ID: ${nodeData.mrauth_id || 'N/A'}`,
-                    `Internal ID: ${nodeData.internal_id || 'N/A'}`
+                    `${nodeData.givenName} ${nodeData.familyName}`,
+                    `─────────────────────────────`,
+                    `PhD Year: ${nodeData.yearAwarded || 'N/A'}`,
+                    `MR Author ID: ${nodeData.mrauth_id || 'N/A'}`,
+                    `Advisors: ${advisorNames}`,
+                    `Direct Descendants: ${descendantCount}`
                 ])
                 .enter()
                 .append("tspan")
-                .attr("x", 25) // Reset X for each tspan line
-                .attr("dy", "1.2em") // Offset Y for each tspan line
+                .attr("x", 25)
+                .attr("dy", (d, i) => i === 0 ? "0em" : "1.4em")
+                .style("font-weight", (d, i) => i === 0 ? "700" : "400")
+                .style("font-size", (d, i) => i === 0 ? "15px" : "13px")
+                .style("fill", (d, i) => i === 1 ? "#999" : "#333")
                 .text(d => d);
-
-                // rectangle box that needs to come in AFTER the text above
-                // requires a timeout
-
-                setTimeout(() => {
-                    try {
-                        const box = tooltipText.node().getBBox();
-
-                        // append the rectangle to group before text
-                        tooltipGroup.insert("rect", "text")
-                            .attr("x", box.x -5) //padding
-                            .attr("y", box.y - 5)
-                            .attr("width", box.width + 10)
-                            .attr("height", box.height + 10)
-                            .style("fill", "f9f9f9") //light gray
-                            .style("stroke", "#666") //also gray
-                            .style("stroke-width", 0.75);
-                            // .style("opacity", .9);
-                    } catch (e) {
-                        console.warn("Could not calculate tooltip bounding box: ", e);
-                    }
-                }, 0); //small timeout, could increase
-                
-            }).on("mouseout", function() {
+            
+            // rectangle box that needs to come in AFTER the text above
+            // requires a timeout
+            setTimeout(() => {
+                try {
+                    const box = tooltipText.node().getBBox();
+                    
+                    // append the rectangle to group before text
+                    tooltipGroup.insert("rect", "text")
+                        .attr("x", box.x - 8)
+                        .attr("y", box.y - 8)
+                        .attr("width", box.width + 16)
+                        .attr("height", box.height + 16)
+                        .style("fill", "#ffffff")
+                        .style("stroke", "#5e734e")
+                        .style("stroke-width", 2)
+                        .attr("rx", 6)
+                        .attr("ry", 6)
+                        .style("filter", "drop-shadow(0 4px 6px rgba(0,0,0,0.1))");
+                } catch (e) {
+                    console.warn("Could not calculate tooltip bounding box: ", e);
+                }
+            }, 0); //small timeout, could increase
+        })
+        .on("mouseout", function() {
             const targetElement = d3.select(this);
             d3.select(this).select("rect")
                 .style("opacity", "1");
-
+            
             // remove the tooltip group from above
             targetElement.selectAll(".hover-tooltip-group").remove();
         });
 
-    // Centering the visual
-    const svgWidth = svg.node().getBoundingClientRect().width;
-    const initialScale = 0.75;
+    // SAKURA: center the visual
+    const svgNode = svg.node();
+    const svgBounds = svgNode.getBoundingClientRect();
+    const graphWidth = graph.graph().width;
+    const graphHeight = graph.graph().height;
+
+    // calculate scale to fit the entire graph with padding
+    const scaleX = (svgBounds.width - 100) / graphWidth; 
+    const scaleY = (svgBounds.height - 100) / graphHeight; 
+    const initialScale = Math.min(scaleX, scaleY, 0.75); 
+
+    // center 
+    const translateX = (svgBounds.width - graphWidth * initialScale) / 2;
+    const translateY = (svgBounds.height - graphHeight * initialScale) / 2;
+
+    // transform
     svg.call(zoom.transform, d3.zoomIdentity
-        .translate((svgWidth - graph.graph().width * initialScale) / 2, 20)
+        .translate(translateX, translateY)
         .scale(initialScale));
 
-    svg.attr('height', graph.graph().height * initialScale + 40);
-    
-    // Show stats panel for root node by default
+    // SVG height to fit graph
+    svg.attr('height', Math.max(graphHeight * initialScale + 100, 600));
+
+    // stats panel for root node by default (delete or use later it's js hidden rn in css)
     const rootNode = graph.node(rootId);
     if (rootNode) {
         showStatsPanel(rootNode.detail, graphData, rootId);
     }
 }
 
-// Calculate generation levels from root
+// SAKURA: calculate generation levels from root
 function calculateLevels(graphData, rootId) {
     const levels = new Map();
     
-    // FIX: Verify rootId before setting level
+    // verify rootId 
     if (!rootId || !graphData.has(rootId)) {
         console.error(`Invalid root ID: ${rootId}`);
         return levels;
@@ -269,7 +302,7 @@ function calculateLevels(graphData, rootId) {
     
     const visited = new Set();
     
-    // BFS to calculate levels
+    // SAKURA: BFS to calculate levels
     function bfs(startId, startLevel, direction) {
         const queue = [[startId, startLevel]];
         let processedCount = 0;
@@ -277,7 +310,7 @@ function calculateLevels(graphData, rootId) {
         while (queue.length > 0) {
             const [currentId, level] = queue.shift();
             
-            // FIX: Better visited tracking
+            // visited tracking
             const visitedKey = `${currentId}-${direction}`;
             if (visited.has(visitedKey)) continue;
             visited.add(visitedKey);
@@ -291,7 +324,7 @@ function calculateLevels(graphData, rootId) {
             }
             
             if (direction === 'down') {
-                // Process descendants
+                // process descendants
                 node.edges.forEach(childId => {
                     if (graphData.has(childId) && !levels.has(childId)) {
                         levels.set(childId, level + 1);
@@ -299,7 +332,7 @@ function calculateLevels(graphData, rootId) {
                     }
                 });
             } else {
-                // Process ancestors (negative levels)
+                // process ancestors (negative levels)
                 node.advisors.forEach(parentId => {
                     if (graphData.has(parentId) && !levels.has(parentId)) {
                         levels.set(parentId, level - 1);
@@ -317,7 +350,7 @@ function calculateLevels(graphData, rootId) {
     
     console.log(`Level calculation complete. Levels assigned to ${levels.size} nodes`);
     
-    // FIX: Log any nodes that don't have levels assigned
+    // SAKURA: log any nodes that don't have levels assigned
     for (const [key, value] of graphData.entries()) {
         if (!levels.has(key)) {
             console.warn(`Node ${key} (${value.detail.givenName} ${value.detail.familyName}) has no level assigned!`);
@@ -326,15 +359,15 @@ function calculateLevels(graphData, rootId) {
     return levels;
 }
 
-// Show stats panel for selected node
+// SAKURA: stats panel for selected node (not used rn for later?)
 function showStatsPanel(detail, graphData, nodeId) {
     const panel = document.getElementById("stats-panel");
     if (!panel) return;
     
-    // Get node data
+    // node data
     const node = graphData.get(nodeId);
     
-    // Build advisor names
+    // advisor names
     const advisorNames = node.advisors
         .map(id => {
             const advisor = graphData.get(id);
@@ -342,10 +375,10 @@ function showStatsPanel(detail, graphData, nodeId) {
         })
         .join(", ") || "N/A";
     
-    // Build descendant count
+    // descendant count
     const descendantCount = node.edges.filter(id => graphData.has(id)).length;
     
-    // Update panel content
+    // panel content
     panel.innerHTML = `
         <h3>${detail.givenName} ${detail.familyName}</h3>
         <div class="stat-row">

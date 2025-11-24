@@ -1,4 +1,4 @@
-import FuzzySet from 'https://cdn.jsdelivr.net/npm/fuzzyset@1.0.7/dist/fuzzyset.esm.js';
+import FuzzySet from 'fuzzyset.js'
 // caches for data and search
 let dataCache = null;
 let nameSearchSet = null;
@@ -10,7 +10,7 @@ export async function loadData(params) {
     if (dataCache) return; // we let it pass
 
     try {
-        const response = await fetch("../sample-data/all_academics_merged_complete.json")
+        const response = await fetch("/sample-data/all_academics_merged_complete.json")
         if (!response.ok) {
             throw new Error(`HTTP error status: ${response.status}`)
         }
@@ -37,6 +37,8 @@ export async function loadData(params) {
 }
 
 // id finder method, takes the query and should output the specific id
+// SAKURA: this is sus it takes the "best" result but it's not accurate (ex "chyba" will give Jie Du) 
+// prob fix later or whatever
 
 export function findIdByName(queryName) {
 
@@ -48,7 +50,7 @@ export function findIdByName(queryName) {
 
     //leverage fuzzysets to approximate the right result
     const results = nameSearchSet.get(queryName);
-    if (!results || results.length == 0) {
+    if (!results || results.length === 0) {
         console.warn(`No match found: ${queryName}`);
         return null; //no match
     }
@@ -109,7 +111,7 @@ function addNodeToMap(map, dataCache, id) {
         internal_id: id
     };
 
-    // SAKURAS FIX: filter out null and empty values
+    // SAKURA: filter out null and empty values
     // get advisees and filtering out empty strings and null values
     const adviseeIds = academic.student_data.descendants.advisees
     .map(adviseeVal => {
@@ -121,7 +123,7 @@ function addNodeToMap(map, dataCache, id) {
         }
         return null;
     })
-    .filter(id => id !== null && id.trim() !== ""); // FIX: Filter out null and empty values
+    .filter(id => id !== null && id.trim() !== ""); // SAKURA: Filter out null and empty values
 
     //extracting the advisors/parents
     const advisorIds = [];
@@ -163,13 +165,13 @@ export function created(rootMrauthId) {
     
     let myMap = new Map();
 
-    // This loop finds the internal ID from the mrauth_id
+    // finds the internal ID from the mrauth_id
     let rootId = null;
     for (const key in dataCache) {
         const academic = dataCache[key]?.MGP_academic;
         if (academic && academic.mrauth_id === rootMrauthId) {
             rootId = academic.ID; // ** e.g., "258" could be made rootId = key if something is off
-            break; // We found them
+            break; // yessah
         }
     }
 
@@ -187,17 +189,17 @@ export function created(rootMrauthId) {
     const rootNode = myMap.get(rootId);
     
     if (rootNode) {
-        // go DOWN, add all children (advisees)
+        // go down & add all children (advisees)
         for (const adviseeId of rootNode.edges) {
             addNodeToMap(myMap, dataCache, adviseeId);
         }
 
-        // loop to go UP and add parents (advisors)
+        // go up add parents (advisors)
         for (const advisorId of rootNode.advisors) {
             addNodeToMap(myMap, dataCache, advisorId);
         }
     }
     
-    // SAKURA'S FIX: return both the map and the root internal ID
+    // SAKURA: return both the map and the root internal ID
     return { graphData: myMap, rootInternalId: rootId };
 }

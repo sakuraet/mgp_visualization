@@ -1,5 +1,6 @@
-import React from 'react'
-import './Homepage.css'
+import React from 'react';
+import Graph from './Graph';  
+import './Homepage.css';
 
 function Homepage() {
   return (
@@ -9,14 +10,7 @@ function Homepage() {
           <h1 className="homepage-title">Mathematics Genealogy Project</h1>
         </header>
 
-        <div className="visualization-card">
-          <div className="viz-placeholder">
-            <div className="placeholder-content">
-              <h3>Node-Link Diagram</h3>
-              <p>Interactive visualization will appear here</p>
-            </div>
-          </div>
-        </div>
+        <Graph />
 
         <div className="info-section">
           <div className="info-card">
