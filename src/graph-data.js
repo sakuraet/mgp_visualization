@@ -1,0 +1,205 @@
+import FuzzySet from 'fuzzyset.js'
+// caches for data and search
+let dataCache = null;
+let nameSearchSet = null;
+let nameToIdMap = new Map();
+
+//loads all the data and then builds a search function
+
+export async function loadData(params) {
+    if (dataCache) return; // we let it pass
+
+    try {
+        const response = await fetch("/sample-data/all_academics_merged_complete.json")
+        if (!response.ok) {
+            throw new Error(`HTTP error status: ${response.status}`)
+        }
+
+        dataCache = await response.json() //we load everything
+
+        // search indexing method
+
+        const nameList = [];
+        for (const key in dataCache) {
+            const academic = dataCache[key]?.MGP_academic;
+            if (academic && academic.mrauth_id) {
+                const fullName = `${academic.given_name} ${academic.family_name}`;
+                nameList.push(fullName);
+                nameToIdMap.set(fullName.toLowerCase(), academic.mrauth_id);
+            }
+        }
+
+        nameSearchSet = FuzzySet(nameList); //points towards fuzzyset in the global library
+        console.log("Data is loaded with search index");
+    } catch(e) {
+        console.error("Failed to fetch/parse JSON data: ", e);
+    }
+}
+
+// id finder method, takes the query and should output the specific id
+// SAKURA: this is sus it takes the "best" result but it's not accurate (ex "chyba" will give Jie Du) 
+// prob fix later or whatever
+
+export function findIdByName(queryName) {
+
+    //relies on the nameSearchSet to look through for the id
+    if (!nameSearchSet) {
+        console.error("Search index does not yet exist.");
+        return null;
+    }
+
+    //leverage fuzzysets to approximate the right result
+    const results = nameSearchSet.get(queryName);
+    if (!results || results.length === 0) {
+        console.warn(`No match found: ${queryName}`);
+        return null; //no match
+    }
+
+    // we take the BEST result, but it could be expanded upon to give a list of options as well.
+    const closestResult = results[0][1];
+
+    return nameToIdMap.get(closestResult.toLowerCase());
+}
+
+
+
+// helper function to parse the right data from json
+function getAcademicData(allData, id) {
+    if (!allData || !allData[id] || !allData[id].MGP_academic) {
+        return null;
+    }
+    return allData[id].MGP_academic;
+}
+
+// helper function to extract node details
+function addNodeToMap(map, dataCache, id) {
+    //if the node already has the ID then we are done
+    if (map.has(id)) {
+        return;
+    }
+    //get data from full cache
+    const academic = getAcademicData(dataCache, id);
+    if (!academic) {
+        console.warn(`No data found in cache for ID: ${id}`);
+        return;
+    }
+
+    // Gemini slop: Safely get the degrees array, or an empty one
+    let year = "N/A"; // Default year
+    
+    // Safely get the degrees array, or an empty one
+    const degrees = academic?.student_data?.degrees || [];
+
+    if (degrees.length > 0) {
+        // 1. Try to find a Ph.D. degree
+        const phdDegree = degrees.find(d => d.degree_type === "Ph.D.");
+        
+        if (phdDegree && phdDegree.degree_year) {
+            year = phdDegree.degree_year;
+        } else {
+            // 2. If no Ph.D., fall back to the last degree in the list
+            const lastDegree = degrees[degrees.length - 1];
+            year = lastDegree?.degree_year || "N/A"; // Fallback to N/A
+        }
+    }
+
+    const details = {
+        familyName: academic.family_name || "",
+        givenName: academic.given_name || "",
+        yearAwarded: year,
+        mrauth_id: academic.mrauth_id,
+        internal_id: id
+    };
+
+    // SAKURA: filter out null and empty values
+    // get advisees and filtering out empty strings and null values
+    const adviseeIds = academic.student_data.descendants.advisees
+    .map(adviseeVal => {
+        if (Array.isArray(adviseeVal)) {
+            if (adviseeVal.length > 0) { //ensures it is not empty
+                return String(adviseeVal[0]).trim();
+            }
+            return null;
+        }
+        return null;
+    })
+    .filter(id => id !== null && id.trim() !== ""); // SAKURA: Filter out null and empty values
+
+    //extracting the advisors/parents
+    const advisorIds = [];
+    academic.student_data.degrees.forEach(degree => {
+        if (degree["advised by"]) {
+            // get all advisor IDs from this degree and add them
+            Object.keys(degree["advised by"]).forEach(id => {
+                if (id && id.trim() !== "") {
+                    advisorIds.push(id);
+                }
+            });
+        }
+    });
+
+
+    map.set(id, {
+        edges: adviseeIds,
+        detail: details,
+        advisors: advisorIds
+    });
+}
+
+/*
+    function: created()
+    - Accepts a rootMrauthId
+    - Fetches the JSON
+    - Finds the matching internal ID
+    - Builds a small map for that person and their children
+    - Returns both the map AND the internal ID of the root
+*/
+export function created(rootMrauthId) {
+
+    //we use the dataCache to be the way the data is stored, this makes it faster
+    // alternative to the asynchronous method
+    if (!dataCache) {
+        console.error("Data not yet loaded, will not make graph.")
+        return null;
+    }
+    
+    let myMap = new Map();
+
+    // finds the internal ID from the mrauth_id
+    let rootId = null;
+    for (const key in dataCache) {
+        const academic = dataCache[key]?.MGP_academic;
+        if (academic && academic.mrauth_id === rootMrauthId) {
+            rootId = academic.ID; // ** e.g., "258" could be made rootId = key if something is off
+            break; // yessah
+        }
+    }
+
+    // catches if there is no such id
+    if (!rootId) {
+        console.error(`Could not find academic with mrauth_id ${rootMrauthId}`);
+        return null;
+    }
+    console.log(`Found internal ID ${rootId} for mrauth_id ${rootMrauthId}`);
+    
+    // add node to the map using helper
+    addNodeToMap(myMap, dataCache, rootId);
+
+    // retrieves the edges of the root node (only the children thus far)
+    const rootNode = myMap.get(rootId);
+    
+    if (rootNode) {
+        // go down & add all children (advisees)
+        for (const adviseeId of rootNode.edges) {
+            addNodeToMap(myMap, dataCache, adviseeId);
+        }
+
+        // go up add parents (advisors)
+        for (const advisorId of rootNode.advisors) {
+            addNodeToMap(myMap, dataCache, advisorId);
+        }
+    }
+    
+    // SAKURA: return both the map and the root internal ID
+    return { graphData: myMap, rootInternalId: rootId };
+}

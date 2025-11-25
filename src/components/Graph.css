@@ -1,0 +1,155 @@
+.graph-wrapper {
+  width: 100%;
+  margin: 2rem 0;
+}
+
+.search-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.search-form {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.search-form label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-weight: 500;
+}
+
+.search-form input {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-width: 300px;
+}
+
+.search-form button {
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  background-color: #5e734e;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.search-form button:hover:not(:disabled) {
+  background-color: #4a5c3e;
+}
+
+.search-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #5e734e;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+#container {
+  width: 100%;
+  min-height: 600px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fafafa;
+  overflow: hidden;
+}
+
+#container svg {
+  width: 90%;
+  height: 600px;
+  margin: 0 auto;
+  display: block;
+}
+
+/* D3/Dagre node and edge styles from Kevin */
+.node rect {
+  fill: #fff;
+  stroke: #333;
+  stroke-width: 1.5px;
+}
+
+.node text {
+  font-weight: 300;
+  font-family: sans-serif;
+}
+
+.edgePath path {
+  stroke: #333;
+  stroke-width: 1.5px;
+  fill: none;
+}
+
+#stats-panel {
+  position: fixed;
+  right: 20px;
+  top: 120px;
+  background: white;
+  border: 2px solid #5e734e;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  max-width: 320px;
+  z-index: 1000;
+  display: none;
+}
+
+#stats-panel h3 {
+  margin: 0 0 1rem 0;
+  color: #5e734e;
+  border-bottom: 2px solid #5e734e;
+  padding-bottom: 0.5rem;
+  font-size: 1.25rem;
+}
+
+#stats-panel {
+  display: none !important;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.75rem 0;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+
+.stat-label {
+  font-weight: 600;
+  color: #666;
+}
+
+.stat-value {
+  text-align: right;
+  color: #333;
+  flex: 1;
+}
