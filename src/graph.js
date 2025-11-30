@@ -24,6 +24,19 @@ export function render(graphData, rootId) {
         console.error(`Root ID ${rootId} not found in graph data`);
         return;
     }
+
+    //KEVIN: with react, the render method would run without a container, so we delay it
+    const container = d3.select("div#container");
+    const nodeCont = container.node();
+
+    // if the container is missing OR has 0 width (meaning it's hidden)
+    if (!nodeCont || nodeCont.getBoundingClientRect().width === 0) {
+        console.warn("Container not ready (0px width). Retrying in next frame...");
+        
+        // schedule this same function to run again in ~16ms.
+        requestAnimationFrame(() => render(graphData, rootId)); 
+        return; 
+    }
     
     console.log(`Rendering graph with root ID: ${rootId}`);
     
@@ -133,10 +146,18 @@ export function render(graphData, rootId) {
     });
     svg.call(zoom);
 
+    
+
     // render obj
     const renderer = new dagreD3.render();
     // run render to draw graph
     renderer(inner, graph);
+    // small timeout to delay render
+    // setTimeout(() => {
+    //     renderer(inner, graph);
+    // }, 100);
+
+    
 
     // add click handlers for nodes
     svg.selectAll("g.node")
@@ -151,6 +172,8 @@ export function render(graphData, rootId) {
             d3.select(this).select("rect")
                 .style("stroke-width", "4px")
                 .style("stroke", "#ff6b6b");
+
+
         })
         //mouseover feature to highlight the particular node
         // .on("mouseover", function() { 
@@ -212,11 +235,8 @@ export function render(graphData, rootId) {
                 .data([
                     `${nodeData.givenName} ${nodeData.familyName}`,
                     `─────────────────────────────`,
-                    // `PhD Year: ${nodeData.yearAwarded || 'N/A'}`,
-                    // `MR Author ID: ${nodeData.mrauth_id || 'N/A'}`,
                     `Advisors: ${advisorNames}`,
-                    `Recorded Descendants: ${descendantCount}`
-                    ,
+                    `Direct Descendants: ${descendantCount}`,
                     `School: ${nodeData.school || 'N/A'}`,
                     `Thesis: ${nodeData.thesis || 'N/A'}`
                 ])
@@ -267,14 +287,6 @@ export function render(graphData, rootId) {
     const graphWidth = graph.graph().width;
     const graphHeight = graph.graph().height;
 
-    //KEVIN: defensive measure to stop crashes with container
-    if (graphWidth === 0 || graphHeight === 0 || svgBounds.width === 0) {
-        console.warn("Graph or Container has 0 dimensions. Skipping zoom/center.");
-        // Default to scale 1 so it doesn't break
-        svg.call(zoom.transform, d3.zoomIdentity.translate(0, 0).scale(1));
-        return; 
-    }
-
     // calculate scale to fit the entire graph with padding
     const scaleX = (svgBounds.width - 100) / graphWidth; 
     const scaleY = (svgBounds.height - 100) / graphHeight; 
@@ -291,6 +303,14 @@ export function render(graphData, rootId) {
 
     // SVG height to fit graph
     svg.attr('height', Math.max(graphHeight * initialScale + 100, 600));
+
+    //KEVIN: defensive measure to stop crashes with container
+    if (graphWidth === 0 || graphHeight === 0 || svgBounds.width === 0) {
+        console.warn("Graph or Container has 0 dimensions. Skipping zoom/center.");
+        // Default to scale 1 so it doesn't break
+        svg.call(zoom.transform, d3.zoomIdentity.translate(0, 0).scale(1));
+        return; 
+    }
 
     // stats panel for root node by default (delete or use later it's js hidden rn in css)
     const rootNode = graph.node(rootId);
