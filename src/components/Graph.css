@@ -75,8 +75,22 @@
   100% { transform: rotate(360deg); }
 }
 
-#container {
+/* new container for graph and filter panel */
+.content-container {
+  display: flex;
+  gap: 1.5rem;
   width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.graph-container {
+  flex: 1;
+  min-width: 0; 
+}
+
+#container {
   min-height: 600px;
   border: 1px solid #ccc;
   border-radius: 8px;
@@ -110,46 +124,15 @@
 }
 
 #stats-panel {
-  position: fixed;
-  right: 20px;
-  top: 120px;
-  background: white;
-  border: 2px solid #5e734e;
-  border-radius: 8px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  max-width: 320px;
-  z-index: 1000;
-  display: none;
-}
-
-#stats-panel h3 {
-  margin: 0 0 1rem 0;
-  color: #5e734e;
-  border-bottom: 2px solid #5e734e;
-  padding-bottom: 0.5rem;
-  font-size: 1.25rem;
-}
-
-#stats-panel {
   display: none !important;
 }
 
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  margin: 0.75rem 0;
-  gap: 1rem;
-  font-size: 0.95rem;
-}
-
-.stat-label {
-  font-weight: 600;
-  color: #666;
-}
-
-.stat-value {
-  text-align: right;
-  color: #333;
-  flex: 1;
+@media (max-width: 1200px) {
+  .content-container {
+    flex-direction: column;
+  }
+  
+  .graph-container {
+    width: 100%;
+  }
 }

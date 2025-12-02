@@ -8,7 +8,7 @@ import * as dagreD3 from 'dagre-d3-es'; //
 */
 
 // SAKURA: THIS IS ALL CLAUDE SLOP REVISED FOR NOW
-export function render(graphData, rootId) {
+export function render(graphData, rootId, cohortPeerIds = new Set()) {
     if (graphData == null || graphData.size === 0) {
         console.error("No data");
         return;
@@ -25,10 +25,10 @@ export function render(graphData, rootId) {
         return;
     }
     
-    console.log(`Rendering graph with root ID: ${rootId}`);
+    console.log(`Rendering graph with root ID: ${rootId} and ${cohortPeerIds.size} cohort peers`);
     
     // generation levels (go up down)
-    const levels = calculateLevels(graphData, rootId);
+    const levels = calculateLevels(graphData, rootId, cohortPeerIds);
     
     console.log(`Calculated levels for ${levels.size} nodes`);
     
@@ -74,6 +74,10 @@ export function render(graphData, rootId) {
             // ancestors (advisors)
             nodeColor = colors.ancestor;
             console.log(`Ancestor node ${key}: level ${level}, color ${nodeColor}`);
+        } else if (level === 0) {
+            // SAKURA: cohort peers at level 0 (same color as root)
+            nodeColor = colors.root;
+            console.log(`Cohort peer node ${key}: level ${level}, color ${nodeColor}`);
         } else {
             // descendants (colors gets lighter)
             const genColors = [colors.gen1, colors.gen2, colors.gen3, colors.gen4, colors.gen5];
@@ -91,6 +95,7 @@ export function render(graphData, rootId) {
         });
     }
 
+    // SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
     // gets the edges that we have in the data
     for (const [key, value] of graphData.entries()) {
         // down children
@@ -98,27 +103,45 @@ export function render(graphData, rootId) {
             // only include the edge if the advisee is in the map
             if (graphData.has(adviseeId)) {
                 graph.setEdge(key, adviseeId, {
-                    arrowhead: "normal",
                     curve: d3.curveBasis,
                     style: "stroke: #666; stroke-width: 2px;",
-                    arrowheadStyle: "fill: #666;",
                     label: " "
                 });
             }
         });
 
+        // SAKURA: advisor edges - skip if target is a cohort peer
         value.advisors.forEach(advisorId => {
             if (graphData.has(advisorId)) {
+                // SAKURA: Don't draw edge if the current node (key) is a cohort peer
+                // This prevents cohort peers from being placed below their advisors
+                if (cohortPeerIds.has(key)) {
+                    console.log(`Skipping edge from advisor ${advisorId} to cohort peer ${key} to maintain level 0 position`);
+                    return; // Skip this edge
+                }
+                
                 graph.setEdge(advisorId, key, {
-                    arrowhead: "normal",
                     curve: d3.curveBasis,
                     style: "stroke: #999; stroke-width: 2px;",
-                    arrowheadStyle: "fill: #999;",
                     label: " "
                 });
             }
         });
     }
+
+    // SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
+    // Create visible edges from root to each cohort peer (no arrow, different style)
+    for (const peerId of cohortPeerIds) {
+        if (graph.hasNode(peerId) && peerId !== rootId) {
+            graph.setEdge(rootId, peerId, {
+                curve: d3.curveBasis,
+                style: "stroke: #5e734e; stroke-width: 1.5px; stroke-dasharray: 5, 5;",  // Dashed line in root color
+                label: " "
+            });
+            console.log(`Added cohort edge from root ${rootId} to cohort peer ${peerId}`);
+        }
+    }
+    // SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
 
     // set up scene
     const svg = d3.select("div#container").select("svg"),
@@ -215,8 +238,7 @@ export function render(graphData, rootId) {
                     // `PhD Year: ${nodeData.yearAwarded || 'N/A'}`,
                     // `MR Author ID: ${nodeData.mrauth_id || 'N/A'}`,
                     `Advisors: ${advisorNames}`,
-                    `Recorded Descendants: ${descendantCount}`
-                    ,
+                    `Recorded Descendants: ${descendantCount}`,
                     `School: ${nodeData.school || 'N/A'}`,
                     `Thesis: ${nodeData.thesis || 'N/A'}`
                 ])
@@ -300,7 +322,7 @@ export function render(graphData, rootId) {
 }
 
 // SAKURA: calculate generation levels from root
-function calculateLevels(graphData, rootId) {
+function calculateLevels(graphData, rootId, cohortPeerIds = new Set()) {
     const levels = new Map();
     
     // verify rootId 
@@ -309,8 +331,22 @@ function calculateLevels(graphData, rootId) {
         return levels;
     }
     
+    // SAKURA: set root to level 0
     levels.set(rootId, 0);
-    console.log(`Starting level calculation from root ${rootId}`);
+    
+    // SAKURA: set all cohort peers to level 0 (same horizontal line as root)
+    // IMPORTANT: Mark these as LOCKED so they won't be changed by BFS
+    const lockedAtZero = new Set([rootId]); // Root is always locked at 0
+    
+    for (const peerId of cohortPeerIds) {
+        if (graphData.has(peerId)) {
+            levels.set(peerId, 0);
+            lockedAtZero.add(peerId); // Lock cohort peers at level 0
+            console.log(`Setting cohort peer ${peerId} to level 0 (locked)`);
+        }
+    }
+    
+    console.log(`Starting level calculation from root ${rootId} with ${cohortPeerIds.size} cohort peers at level 0`);
     
     const visited = new Set();
     
@@ -338,7 +374,8 @@ function calculateLevels(graphData, rootId) {
             if (direction === 'down') {
                 // process descendants
                 node.edges.forEach(childId => {
-                    if (graphData.has(childId) && !levels.has(childId)) {
+                    // SAKURA: Don't overwrite locked nodes (root + cohort peers)
+                    if (graphData.has(childId) && !levels.has(childId) && !lockedAtZero.has(childId)) {
                         levels.set(childId, level + 1);
                         queue.push([childId, level + 1]);
                     }
@@ -346,7 +383,8 @@ function calculateLevels(graphData, rootId) {
             } else {
                 // process ancestors (negative levels)
                 node.advisors.forEach(parentId => {
-                    if (graphData.has(parentId) && !levels.has(parentId)) {
+                    // SAKURA: Don't overwrite locked nodes (root + cohort peers)
+                    if (graphData.has(parentId) && !levels.has(parentId) && !lockedAtZero.has(parentId)) {
                         levels.set(parentId, level - 1);
                         queue.push([parentId, level - 1]);
                     }
@@ -359,6 +397,12 @@ function calculateLevels(graphData, rootId) {
     
     bfs(rootId, 0, 'down');
     bfs(rootId, 0, 'up');
+    
+    // SAKURA: also run BFS for cohort peers to get their descendants/ancestors
+    for (const peerId of cohortPeerIds) {
+        bfs(peerId, 0, 'down');
+        bfs(peerId, 0, 'up');
+    }
     
     console.log(`Level calculation complete. Levels assigned to ${levels.size} nodes`);
     
