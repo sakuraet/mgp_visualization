@@ -275,7 +275,8 @@ export function render(graphData, rootId, onNodeClick) {
                     `${nodeData.givenName} ${nodeData.familyName}`,
                     `─────────────────────────────`,
                     `Advisors: ${advisorNames}`,
-                    `Direct Descendants: ${descendantCount}`,
+                    `Shown Descendants: ${descendantCount}`,
+                    `Total Descendants: ${nodeData.true_desc_count}`,
                     `School: ${nodeData.school || 'N/A'}`,
                     `Thesis: ${nodeData.thesis || 'N/A'}`
                 ])
@@ -445,8 +446,15 @@ function showStatsPanel(detail, graphData, nodeId) {
             return advisor ? `${advisor.detail.givenName} ${advisor.detail.familyName}` : "Unknown";
         })
         .join(", ") || "N/A";
-    
-    // descendant count
+
+
+    /* 
+        KEVIN: descedantCount depends on the on the graphdata rendered, 
+        which may not include indirect descendants (e.g. grandchildren) from called node
+
+        we must define a different descendantCount to get a general figure
+
+    */
     const descendantCount = node.edges.filter(id => graphData.has(id)).length;
     
     // panel content
