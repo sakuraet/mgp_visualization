@@ -21,7 +21,7 @@ function Homepage() {
             </p>
             <p>
               <strong>Click</strong>: To focus the tree on a specific mathematician, click on their node to center the visualization
-              around them, which will display their advisors, cohort peers, and students.
+              around them, which will display their advisors, cohort peers (students of the same advisor), and students.
             </p>
             <p>
               <strong>Search Bar</strong>: To search for a mathematician, 

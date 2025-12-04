@@ -1,22 +1,27 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { render } from '../graph.js';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { loadData, findIdByName, created } from '../graph-data.js';
+import { render } from '../graph.js';
+import FilterPanel from './FilterPanel';
 import './Graph.css';
 
 function Graph() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentMrauthId, setCurrentMrauthId] = useState("462675");
+  const [filters, setFilters] = useState({
+    university: '',
+    yearMin: 1800,
+    yearMax: 2024,
+    showAdvisors: true,
+    showCohortPeers: true,
+    showStudents: true
+  });
   const hasLoadedData = useRef(false);
+  const handleNodeClickRef = useRef(null);
 
   // KEVIN: handleNodeClick function to trigger redraw of graph
-  function handleNodeClick(newMrauthId) {
-    if (!newMrauthId) return;
-    console.log(`Refocusing graph on ID: ${newMrauthId}`);
-    buildRenderGraph(newMrauthId);
-  }
-
-  // SAKURA: buildRenderGraph function from main.js
-  function buildRenderGraph(mrauth_id) {
+  // SAKURA: buildRenderGraph function from main.js (wrapped in useCallback)
+  const buildRenderGraph = useCallback((mrauth_id, activeFilters = filters) => {
     if (!mrauth_id) {
       console.error("No ID provided to render.");
       return;
@@ -24,18 +29,15 @@ function Graph() {
 
     console.log(`[Graph.jsx] Requesting build for: ${mrauth_id}`);    
     
-    // SAKURA: making subgraph data 
-    const result = created(mrauth_id);
+    const result = created(mrauth_id, activeFilters);
     
     if (!result) {
       console.error(`Failed to create graph data for ID: ${mrauth_id}`);
       return;
     }
-
-
-    const { graphData: myGraphData, rootInternalId } = result;
     
-    // SAKURA: verify we have both valid data and a valid root ID
+    const { graphData: myGraphData, rootInternalId, cohortPeerIds } = result;
+    
     if (!myGraphData || myGraphData.size === 0) {
       console.error(`No graph data created for ID: ${mrauth_id}`);
       return;
@@ -49,25 +51,40 @@ function Graph() {
     console.log(`Data loaded for ${myGraphData.size} nodes. Root ID: ${rootInternalId}. Rendering...`);
     
     // SAKURA: correct rootInternalId directly from the created() function
-    //KEVIN: added handleNodeClick for the input
-    render(myGraphData, rootInternalId, handleNodeClick);
-  }
+    // KEVIN: added handleNodeClick for the input
+    render(myGraphData, rootInternalId, handleNodeClickRef.current, cohortPeerIds || new Set());
+  }, [filters]);
+
+  // move nodeclick after bruhhhh
+  const handleNodeClick = useCallback((newMrauthId) => {
+    if (!newMrauthId) return;
+    console.log(`Refocusing graph on ID: ${newMrauthId}`);
+    buildRenderGraph(newMrauthId);
+  }, [buildRenderGraph]); 
+
+  handleNodeClickRef.current = handleNodeClick;
 
   // SAKURA: handleSearch function from main.js (adapted for React)
   function handleSearch(event) {
-    event.preventDefault(); // stops the form from reloading the page
+    event.preventDefault();
     
-    if (!searchQuery) return; // we get nothing
+    if (!searchQuery) return;
     
     console.log(`Searching for name: ${searchQuery}`);
     const mrauth_id = findIdByName(searchQuery);
     
-    // if the ID exists, then we should render the graph
     if (mrauth_id) {
-      buildRenderGraph(mrauth_id);
+      setCurrentMrauthId(mrauth_id);
+      buildRenderGraph(mrauth_id, filters);
     } else {
       alert(`Cannot find a match for ${searchQuery}`);
     }
+  }
+
+  // SAKURA: filter change handler
+  function handleFilterChange(newFilters) {
+    console.log("Filters updated:", newFilters);
+    setFilters(newFilters);
   }
 
   // SAKURA: main() function from main.js (converted to useEffect)
@@ -75,29 +92,32 @@ function Graph() {
     async function initializeData() {
       if (hasLoadedData.current) return;
       
-      // load all data into memory
       console.log("Loading academic data...");
       await loadData();
       console.log("Data loaded.");
       
-      // default render is The Dio Holl fella
-      buildRenderGraph("462675");
+      buildRenderGraph("462675", filters);
       
       setIsLoading(false);
       hasLoadedData.current = true;
     }
     
     initializeData();
-  }, []); // empty dependency array = runs once on mount (like main())
+  }, [buildRenderGraph, filters]);
+
+  // SAKURA: re-render when filters change
+  useEffect(() => {
+    if (!isLoading && currentMrauthId) {
+      buildRenderGraph(currentMrauthId, filters);
+    }
+  }, [filters, buildRenderGraph, currentMrauthId, isLoading]);
 
   return (
     <div className="graph-wrapper">
       <div className="search-section">
-        {/* SAKURA: replaces the form with id="single_name_form" from main.js */}
         <form onSubmit={handleSearch} className="search-form">
           <label>
             Enter a name:
-            {/* SAKURA: replaces the input with id="single_name_input" from main.js */}
             <input
               type="text"
               value={searchQuery}
@@ -120,16 +140,16 @@ function Graph() {
         </div>
       )}
 
-      {/* SAKURA: container from HTML that D3 renders into
-          KEVIN: this comment was done improperly? */} 
-      <div id="container" style={{ display: isLoading ? 'none' : 'block' }}>
-        <svg><g/></svg>
+      <div className="content-container" style={{ display: isLoading ? 'none' : 'flex' }}>
+        <div id="container" className="graph-container">
+          <svg><g/></svg>
+        </div>
+        
+        <FilterPanel onFilterChange={handleFilterChange} />
       </div>
       
-      {/* SAKURA: stats panel that gets populated by graph.js for later? */}
       <div id="stats-panel"></div>
     </div>
   );
 }
-
 export default Graph;
