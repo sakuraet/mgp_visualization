@@ -1,5 +1,5 @@
 # Data too big
-sample-data/
+public/sample-data/
 
 # Dependencies
 node_modules/
