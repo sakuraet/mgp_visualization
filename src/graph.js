@@ -76,7 +76,7 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
             nodeColor = colors.ancestor;
             console.log(`Ancestor node ${key}: level ${level}, color ${nodeColor}`);
         } else if (level === 0) {
-            // SAKURA: cohort peers at level 0 (same color as root)
+            // cohort peers at level 0 (same color as root)
             nodeColor = colors.root;
             console.log(`Cohort peer node ${key}: level ${level}, color ${nodeColor}`);
         } else {
@@ -98,13 +98,14 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
     }
 
     // SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
+    // anne: dont kys u so sexy ahahah...
     // gets the edges that we have in the data
     for (const [key, value] of graphData.entries()) {
         // down children
         value.edges.forEach(adviseeId => {
             // only include the edge if the advisee is in the map
             if (graphData.has(adviseeId)) {
-                // SAKURA: Don't draw edge to cohort peer (maintain level 0 position)
+                // anne: don't draw edge to cohort peer (maintain level 0 position)
                 if (cohortPeerIds.has(adviseeId)) {
                     console.log(`Skipping edge from ${key} to cohort peer ${adviseeId} to maintain level 0 position`);
                     return;
@@ -112,21 +113,20 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
                 
                 graph.setEdge(key, adviseeId, {
                     curve: d3.curveBasis,
-                    style: "stroke: #666; stroke-width: 2px;",
+                    style: "stroke: #999; stroke-width: 2px;",
                     label: " "
                 });
             }
         });
 
         // anne: advisor edges - skip drawing hierarchical edges for cohort peers in dagre
-        // (we'll draw them manually later to avoid affecting layout)
+        // (will draw manually later to avoid affecting layout)
         value.advisors.forEach(advisorId => {
             if (graphData.has(advisorId)) {
-                // anne: Don't draw edge if the current node (key) is a cohort peer
-                // This prevents cohort peers from being placed below their advisors
+                // anne: don't draw edge if the current node (key) is a cohort peer
                 if (cohortPeerIds.has(key)) {
                     console.log(`Skipping edge from advisor ${advisorId} to cohort peer ${key} to maintain level 0 position`);
-                    return; // Skip this edge
+                    return; // skip this edge
                 }
                 
                 graph.setEdge(advisorId, key, {
@@ -138,7 +138,7 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
         });
     }
 
-    // anne: Create a subgraph to group root and cohort peers at same rank
+    // anne: create a subgraph to group root and cohort peers at same rank
     if (cohortPeerIds.size > 0) {
         const rankGroupId = "rank0";
         graph.setNode(rankGroupId, {
@@ -147,10 +147,10 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
             style: 'fill: none; stroke: none;'  // Invisible container
         });
         
-        // Add root to the rank group
+        // anne: add root to the rank group
         graph.setParent(rootId, rankGroupId);
         
-        // Add all cohort peers to the same rank group
+        // anne: add all cohort peers to the same rank group
         for (const peerId of cohortPeerIds) {
             if (graph.hasNode(peerId) && peerId !== rootId) {
                 graph.setParent(peerId, rankGroupId);
@@ -177,43 +177,40 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
     // run render to draw graph
     renderer(inner, graph);
     
-    // anne: Add horizontal lines connecting root to cohort peers
-    // AND advisor lines for cohort peers
+    // anne: add horizontal lines connecting root to cohort peers and advisor lines for cohort peers
     if (cohortPeerIds.size > 0) {
         for (const peerId of cohortPeerIds) {
             if (peerId !== rootId && graph.node(peerId) && graph.node(rootId)) {
                 const rootNode = graph.node(rootId);
                 const peerNode = graph.node(peerId);
                 
-                // Draw a horizontal dashed line between root and cohort peer
+                // anne: horizontal line between root and cohort peer
                 inner.append("line")
                     .attr("x1", rootNode.x)
                     .attr("y1", rootNode.y)
                     .attr("x2", peerNode.x)
                     .attr("y2", peerNode.y)
-                    .attr("stroke", "#5e734e")
-                    .attr("stroke-width", "1.5")
-                    .attr("stroke-dasharray", "5, 5")
+                    .attr("stroke", "#999")
+                    .attr("stroke-width", "2")
                     .attr("class", "cohort-peer-line")
                     .lower(); // Send to back so it doesn't cover nodes
                 
                 console.log(`Drew line from root (${rootNode.x}, ${rootNode.y}) to cohort peer ${peerId} (${peerNode.x}, ${peerNode.y})`);
                 
-                // anne: Draw lines from cohort peer to their advisors
+                // anne: lines from cohort peer to their advisors
                 const peerData = graphData.get(peerId);
                 if (peerData && peerData.advisors) {
                     peerData.advisors.forEach(advisorId => {
                         if (graph.node(advisorId)) {
                             const advisorNode = graph.node(advisorId);
                             
-                            // Draw advisor edge using d3 path (similar to other edges)
+                            // anne: draw advisor edge using d3 path (similar to other edges)
                             inner.append("path")
                                 .attr("d", `M${advisorNode.x},${advisorNode.y} L${peerNode.x},${peerNode.y}`)
                                 .attr("stroke", "#999")
                                 .attr("stroke-width", "2")
                                 .attr("fill", "none")
                                 .attr("class", "cohort-advisor-edge")
-                                .attr("marker-end", "url(#arrowhead)")
                                 .lower();
                             
                             console.log(`Drew advisor edge from ${advisorId} to cohort peer ${peerId}`);
@@ -397,7 +394,7 @@ function calculateLevels(graphData, rootId, cohortPeerIds = new Set()) {
     // SAKURA: set root to level 0
     levels.set(rootId, 0);
     
-    // SAKURA: set all cohort peers to level 0 (same horizontal line as root)
+    // anne: set all cohort peers to level 0 (same horizontal line as root)
     // IMPORTANT: Mark these as LOCKED so they won't be changed by BFS
     const lockedAtZero = new Set([rootId]); // Root is always locked at 0
     
@@ -437,7 +434,7 @@ function calculateLevels(graphData, rootId, cohortPeerIds = new Set()) {
             if (direction === 'down') {
                 // process descendants
                 node.edges.forEach(childId => {
-                    // SAKURA: Don't overwrite locked nodes (root + cohort peers)
+                    // anne: Don't overwrite locked nodes (root + cohort peers)
                     if (graphData.has(childId) && !levels.has(childId) && !lockedAtZero.has(childId)) {
                         levels.set(childId, level + 1);
                         queue.push([childId, level + 1]);
@@ -446,7 +443,7 @@ function calculateLevels(graphData, rootId, cohortPeerIds = new Set()) {
             } else {
                 // process ancestors (negative levels)
                 node.advisors.forEach(parentId => {
-                    // SAKURA: Don't overwrite locked nodes (root + cohort peers)
+                    // anne: Don't overwrite locked nodes (root + cohort peers)
                     if (graphData.has(parentId) && !levels.has(parentId) && !lockedAtZero.has(parentId)) {
                         levels.set(parentId, level - 1);
                         queue.push([parentId, level - 1]);

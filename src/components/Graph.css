@@ -123,6 +123,14 @@
   fill: none;
 }
 
+/* anne: hide arrow */
+.edgePath marker,
+.edgePath defs,
+marker#arrowhead,
+marker[id^="arrowhead"] {
+  display: none;
+}
+
 #stats-panel {
   display: none !important;
 }

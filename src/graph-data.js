@@ -335,7 +335,17 @@ export function created(rootMrauthId, filters = {}) {
     }
     console.log(`Found internal ID ${rootId} for mrauth_id ${rootMrauthId}`);
     
-    // SAKURA: add root node to the map (always include the root)
+    // SAKURA: Check if root passes filters first
+    if (!passesFilters(rootId)) {
+        console.log(`Root node does not pass filters`);
+        return { 
+            graphData: new Map(), 
+            rootInternalId: null,
+            cohortPeerIds: new Set()
+        };
+    }
+    
+    // SAKURA: add root node to the map (only if it passes filters)
     addNodeToMap(myMap, dataCache, rootId);
 
     // retrieves the edges of the root node

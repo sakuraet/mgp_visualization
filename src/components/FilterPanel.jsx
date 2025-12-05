@@ -51,6 +51,24 @@ function FilterPanel({ onFilterChange }) {
                     />
                 </div>
             </div>
+
+            {/* anne: legend */}
+            <div className="legend-section">
+                <h4>Node Color Legend</h4>
+                <div className="legend-item">
+                    <span className="legend-color" style={{ backgroundColor: '#2d5016' }}></span>
+                    <span className="legend-label">Advisors</span>
+                </div>
+                <div className="legend-item">
+                    <span className="legend-color" style={{ backgroundColor: '#5e734e' }}></span>
+                    <span className="legend-label">Cohort Peers & Focus</span>
+                </div>
+                <div className="legend-item">
+                    <span className="legend-color" style={{ backgroundColor: '#9dc183' }}></span>
+                    <span className="legend-label">Students</span>
+                </div>
+            </div>
+
             <div className="filter-group">
                 <label className="checkbox-label">
                     <input
@@ -71,12 +89,6 @@ function FilterPanel({ onFilterChange }) {
                     />
                     Show Cohort Peers
                 </label>
-                {/* SAKURA: cohort peers = people with same advisor */}
-                {filters.showCohortPeers && (
-                    <small style={{ display: 'block', marginLeft: '1.5rem', marginTop: '0.5rem', color: '#777', fontSize: '0.8rem' }}>
-                        Same year & institution
-                    </small>
-                )}
             </div>
 
             <div className="filter-group">
