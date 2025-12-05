@@ -113,7 +113,7 @@
 }
 
 .node text {
-  font-weight: 300;
+  font-weight: 500;
   font-family: sans-serif;
 }
 
@@ -135,6 +135,24 @@ marker[id^="arrowhead"] {
   display: none !important;
 }
 
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.75rem 0;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+
+.stat-label {
+  font-weight: 600;
+  color: #666;
+}
+
+.stat-value {
+  text-align: right;
+  color: #333;
+  flex: 1;
+}
 @media (max-width: 1200px) {
   .content-container {
     flex-direction: column;

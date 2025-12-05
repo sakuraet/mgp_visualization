@@ -1,4 +1,3 @@
-/* ========== SAKURA EDIT: CHANGED FROM FIXED TO FLEX ITEM ========== */
 .filter-panel {
   width: 320px;
   flex-shrink: 0; /* Prevents shrinking in flex layout */
@@ -10,12 +9,9 @@
   height: fit-content;
   max-height: 600px;
   overflow-y: auto;
-  /* DELETED: position: fixed, right: 20px, top: 120px, z-index */
-  /* ADDED: flex-shrink: 0 to keep fixed width */
   position: sticky; /* Sticks when scrolling */
   top: 20px;
 }
-/* ========== END SAKURA EDIT ========== */
 
 .filter-panel h3 {
   margin: 0 0 1.5rem 0;

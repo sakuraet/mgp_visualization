@@ -8,7 +8,10 @@ import * as dagreD3 from 'dagre-d3-es'; //
 */
 
 // SAKURA: THIS IS ALL CLAUDE SLOP REVISED FOR NOW
-export function render(graphData, rootId, cohortPeerIds = new Set()) {
+export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()) {
+    
+    console.log("Render called. Is onNodeClick valid?", typeof onNodeClick); // Should say "function"
+
     if (graphData == null || graphData.size === 0) {
         console.error("No data");
         return;
@@ -23,6 +26,19 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
     if (!graphData.has(rootId)) {
         console.error(`Root ID ${rootId} not found in graph data`);
         return;
+    }
+
+    //KEVIN: with react, the render method would run without a container, so we delay it
+    const container = d3.select("div#container");
+    const nodeCont = container.node();
+
+    // if the container is missing OR has 0 width (meaning it's hidden)
+    if (!nodeCont || nodeCont.getBoundingClientRect().width === 0) {
+        console.warn("Container not ready (0px width). Retrying in next frame...");
+        
+        // schedule this same function to run again in ~16ms.
+        requestAnimationFrame(() => render(graphData, rootId, onNodeClick)); 
+        return; 
     }
     
     console.log(`Rendering graph with root ID: ${rootId} and ${cohortPeerIds.size} cohort peers`);
@@ -170,12 +186,18 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
     const zoom = d3.zoom().on("zoom", function(event) {
         inner.attr("transform", event.transform);
     });
-    svg.call(zoom);
+    svg.call(zoom).on("dblclick.zoom", null);
+
+    
 
     // render obj
     const renderer = new dagreD3.render();
     // run render to draw graph
     renderer(inner, graph);
+    // small timeout to delay render
+    // setTimeout(() => {
+    //     renderer(inner, graph);
+    // }, 100);
     
     // anne: add horizontal lines connecting root to cohort peers and advisor lines for cohort peers
     if (cohortPeerIds.size > 0) {
@@ -221,12 +243,21 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
         }
     }
 
-    // add click handlers for nodes
+    // click feature
     svg.selectAll("g.node")
         .style("cursor", "pointer")
+
+         // 1. single click feature to highlight
         .on("click", function(event, nodeId) {
-            const node = graph.node(nodeId);
-            showStatsPanel(node.detail, graphData, nodeId);
+
+            const fullNode = graphData.get(nodeId);
+
+            // check to see if the node has source data
+            if (!fullNode || !fullNode.detail) {
+                return;
+            }
+
+            showStatsPanel(fullNode.detail, graphData, nodeId);
             
             // highlight clicked node
             svg.selectAll("g.node rect")
@@ -234,13 +265,44 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
             d3.select(this).select("rect")
                 .style("stroke-width", "4px")
                 .style("stroke", "#ff6b6b");
+
         })
-        //mouseover feature to highlight the particular node
-        // .on("mouseover", function() { 
-        //     d3.select(this).select("rect")
-        //         .style("opacity", "0.8");
-        // })
-        //mousever feature to give additional information on node
+        
+        // 2. double click feature to refocus tree
+        .on("dblclick", function(event, nodeId) {
+
+            console.log("double clicked!", nodeId);
+            const fullNode = graphData.get(nodeId);
+
+            // check to see if the node has source data
+            if (!fullNode || !fullNode.detail) {
+                console.error("Clicked node missing from source data: ", nodeId);
+                return;
+            }
+
+            // extract mrauth_id and check if it exists
+            const mrauthId = fullNode.detail.mrauth_id;
+            if (mrauthId) {
+                console.log("Refocusing on: ", fullNode.detail.givenName);
+                if (onNodeClick) {
+                    onNodeClick(mrauthId);
+                }
+
+            //     //KEVIN: things don't load, so we have to tell them no data
+            //    else {
+            //         alert(`Cannot load tree for ${fullNode.detail.givenName} because they do not graph data.`);
+        
+            //         // shake the node or flash it red to indicate error (requires more CSS)
+            //         d3.select(this).select("rect")
+            //             .transition().duration(100).style("stroke", "red")
+            //             .transition().duration(100).style("stroke", "#ff6b6b");
+            //     }
+            }
+            
+
+        })
+        
+        //mouseover feature to give additional information on node
 
         // SAKURA: hover feature for react or yea
         .on("mouseover", function(event, nodeId) {
@@ -295,9 +357,9 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
                 .data([
                     `${nodeData.givenName} ${nodeData.familyName}`,
                     `─────────────────────────────`,
-                    // `PhD Year: ${nodeData.yearAwarded || 'N/A'}`,
-                    // `MR Author ID: ${nodeData.mrauth_id || 'N/A'}`,
                     `Advisors: ${advisorNames}`,
+                    `Shown Descendants: ${descendantCount}`,
+                    `Total Descendants: ${nodeData.true_desc_count}`,
                     `Recorded Descendants: ${descendantCount}`,
                     `School: ${nodeData.school || 'N/A'}`,
                     `Thesis: ${nodeData.thesis || 'N/A'}`
@@ -349,14 +411,6 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
     const graphWidth = graph.graph().width;
     const graphHeight = graph.graph().height;
 
-    //KEVIN: defensive measure to stop crashes with container
-    if (graphWidth === 0 || graphHeight === 0 || svgBounds.width === 0) {
-        console.warn("Graph or Container has 0 dimensions. Skipping zoom/center.");
-        // Default to scale 1 so it doesn't break
-        svg.call(zoom.transform, d3.zoomIdentity.translate(0, 0).scale(1));
-        return; 
-    }
-
     // calculate scale to fit the entire graph with padding
     const scaleX = (svgBounds.width - 100) / graphWidth; 
     const scaleY = (svgBounds.height - 100) / graphHeight; 
@@ -373,6 +427,14 @@ export function render(graphData, rootId, cohortPeerIds = new Set()) {
 
     // SVG height to fit graph
     svg.attr('height', Math.max(graphHeight * initialScale + 100, 600));
+
+    //KEVIN: defensive measure to stop crashes with container
+    if (graphWidth === 0 || graphHeight === 0 || svgBounds.width === 0) {
+        console.warn("Graph or Container has 0 dimensions. Skipping zoom/center.");
+        // Default to scale 1 so it doesn't break
+        svg.call(zoom.transform, d3.zoomIdentity.translate(0, 0).scale(1));
+        return; 
+    }
 
     // stats panel for root node by default (delete or use later it's js hidden rn in css)
     const rootNode = graph.node(rootId);
@@ -490,8 +552,15 @@ function showStatsPanel(detail, graphData, nodeId) {
             return advisor ? `${advisor.detail.givenName} ${advisor.detail.familyName}` : "Unknown";
         })
         .join(", ") || "N/A";
-    
-    // descendant count
+
+
+    /* 
+        KEVIN: descedantCount depends on the on the graphdata rendered, 
+        which may not include indirect descendants (e.g. grandchildren) from called node
+
+        we must define a different descendantCount to get a general figure
+
+    */
     const descendantCount = node.edges.filter(id => graphData.has(id)).length;
     
     // panel content
