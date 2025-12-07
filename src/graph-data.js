@@ -7,6 +7,8 @@ import FuzzySet from 'fuzzyset'
 let dataCache = null;
 let nameSearchSet = null;
 let nameToIdMap = new Map();
+let universitySearchSet = null;
+
 
 //loads all the data and then builds a search function
 
@@ -14,7 +16,7 @@ export async function loadData(params) {
     if (dataCache) return; // we let it pass
 
     try {
-        const response = await fetch("/sample-data/all_academics_merged_complete.json")
+        const response = await fetch("/sample-data/all_academics_merged_full.json")
         if (!response.ok) {
             throw new Error(`HTTP error status: ${response.status}`)
         }
@@ -24,16 +26,32 @@ export async function loadData(params) {
         // search indexing method
 
         const nameList = [];
+        const universitySet = new Set();
+
         for (const key in dataCache) {
             const academic = dataCache[key]?.MGP_academic;
             if (academic && academic.mrauth_id) {
                 const fullName = `${academic.given_name} ${academic.family_name}`;
                 nameList.push(fullName);
                 nameToIdMap.set(fullName.toLowerCase(), academic.mrauth_id);
+
+
+                academic.student_data.degrees.forEach(degree => {
+                    if (degree.schools && Array.isArray(degree.schools)) {
+                        degree.schools.forEach(school => {
+                            if (school && school.trim() !== '') {
+                                universitySet.add(school.trim());
+                            }
+                        });
+                    }
+                });
             }
         }
 
-        nameSearchSet = FuzzySet(nameList); //points towards fuzzyset in the global library
+        //points towards fuzzyset in the global library
+        nameSearchSet = FuzzySet(nameList); 
+        universitySearchSet = FuzzySet(Array.from(universitySet)); 
+
         console.log("Data is loaded with search index");
     } catch(e) {
         console.error("Failed to fetch/parse JSON data: ", e);
@@ -44,28 +62,63 @@ export async function loadData(params) {
 // SAKURA: this is sus it takes the "best" result but it's not accurate (ex "chyba" will give Jie Du) 
 // prob fix later or whatever
 
+
+//KEVIN : reduced findIdByName to just retrieving the ID
 export function findIdByName(queryName) {
 
-    //relies on the nameSearchSet to look through for the id
-    if (!nameSearchSet) {
-        console.error("Search index does not yet exist.");
-        return null;
-    }
+    // //relies on the nameSearchSet to look through for the id
+    // if (!nameSearchSet) {
+    //     console.error("Search index does not yet exist.");
+    //     return null;
+    // }
 
-    //leverage fuzzysets to approximate the right result
-    const results = nameSearchSet.get(queryName);
-    if (!results || results.length === 0) {
-        console.warn(`No match found: ${queryName}`);
-        return null; //no match
-    }
+    // //leverage fuzzysets to approximate the right result
+    // const results = nameSearchSet.get(queryName);
+    // if (!results || results.length === 0) {
+    //     console.warn(`No match found: ${queryName}`);
+    //     return null; //no match
+    // }
 
-    // we take the BEST result, but it could be expanded upon to give a list of options as well.
-    const closestResult = results[0][1];
+    // // we take the BEST result, but it could be expanded upon to give a list of options as well.
+    // const closestResult = results[0][1];
 
-    return nameToIdMap.get(closestResult.toLowerCase());
+    // return nameToIdMap.get(closestResult.toLowerCase());
+
+    return nameToIdMap.get(queryName.toLowerCase());
 }
 
+//KEVIN: getSuggestions to calculate the nearest query results using FuzzySet
+export function getSuggestions(queryName) {
+    if (!nameSearchSet || !queryName) return [];
 
+    // get() returns [[score, match], ....] sorted by score in desc order
+    const results = nameSearchSet.get(queryName);
+
+    if (!results) return [];
+    
+    //return map of name with score and id
+    return results.map(([score, name]) => ({
+        name: name,
+        id: nameToIdMap.get(name.toLowerCase()),
+        score: score
+    }));
+}
+
+//KEVIN: get university query suggestions
+export function getUniversitySuggestions(queryName) {
+    if (!universitySearchSet || !queryName) return [];
+
+    // get() returns [[score, match], ....] sorted by score in desc order
+    const results = universitySearchSet.get(queryName);
+
+    if (!results) return [];
+    
+    // return array of suggested university names
+    return results.map(([score, name]) => ({
+        name: name,
+        score: score
+    }));
+}
 
 // helper function to parse the right data from json
 function getAcademicData(allData, id) {
