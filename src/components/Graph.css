@@ -3,6 +3,22 @@
   margin: 2rem 0;
 }
 
+.focused-name-display {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  pointer-events: none;
+  border: 2px solid #5e734e;
+}
+
 .search-section {
   margin-bottom: 2rem;
   padding: 1rem;
@@ -87,7 +103,8 @@
 
 .graph-container {
   flex: 1;
-  min-width: 0; 
+  min-width: 0;
+  position: relative;
 }
 
 #container {
