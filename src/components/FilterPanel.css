@@ -23,6 +23,7 @@
 
 .filter-group {
   margin-bottom: 1.5rem;
+  overflow: visible;
 }
 
 .filter-group label {
@@ -115,7 +116,43 @@
 .filter-panel::-webkit-scrollbar-thumb:hover {
   background: #4a5c3e;
 }
+/* KEVIN: Overrides for the university filter autocomplete dropdown */
 
+/* 1. Wrapper (sets the context for absolute positioning) */
+.filter-panel .autocomplete-wrapper {
+  position: relative;
+  width: 100%; 
+  display: block;
+}
+
+/* 2. Dropdown Container */
+.filter-panel .suggestions-dropdown {
+  position: absolute;
+  top: 100%; /* Position it right below the input */
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 200px; /* Limit height and enable scrolling */
+  overflow-y: auto;
+  z-index: 20000; /* CRITICAL: Ensure it stacks above Graph.css z-index: 1000 */
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  margin-top: 2px; /* Small gap from the input box */
+}
+
+/* 3. Individual Suggestion Item */
+.filter-panel .suggestion-item {
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.filter-panel .suggestion-item:hover {
+  background-color: #f0f0f0;
+}
 /* Legend section */
 .legend-section {
   margin-top: 1.5rem;

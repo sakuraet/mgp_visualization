@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { loadData, findIdByName, created } from '../graph-data.js';
+import { loadData, findIdByName, created, getSuggestions} from '../graph-data.js';
 import { render } from '../graph.js';
 import FilterPanel from './FilterPanel';
 import './Graph.css';
@@ -7,8 +7,9 @@ import './Graph.css';
 function Graph() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentMrauthId, setCurrentMrauthId] = useState("462675");
-  const [focusedName, setFocusedName] = useState('');
   const [filters, setFilters] = useState({
     university: '',
     yearMin: 1800,
@@ -41,6 +42,7 @@ function Graph() {
     
     if (!myGraphData || myGraphData.size === 0) {
       console.error(`No graph data created for ID: ${mrauth_id}`);
+      // alert("The selected academic does not match the current filters.");
       return;
     }
     
@@ -51,56 +53,113 @@ function Graph() {
     
     console.log(`Data loaded for ${myGraphData.size} nodes. Root ID: ${rootInternalId}. Rendering...`);
     
-    // anne: grab and set the focused mathematician's name
-    const rootNode = myGraphData.get(rootInternalId);
-    if (rootNode && rootNode.detail) {
-      const fullName = `${rootNode.detail.givenName} ${rootNode.detail.familyName}`.trim();
-      setFocusedName(fullName);
-    }
-    
     // SAKURA: correct rootInternalId directly from the created() function
     // KEVIN: added handleNodeClick for the input
     render(myGraphData, rootInternalId, handleNodeClickRef.current, cohortPeerIds || new Set());
   }, [filters]);
 
-  // move nodeclick after bruhhhh
+    // move nodeclick after bruhhhh
   const handleNodeClick = useCallback((newMrauthId) => {
     if (!newMrauthId) return;
     console.log(`Refocusing graph on ID: ${newMrauthId}`);
+
+    //reset the searchQuery as empty ''
+    setSearchQuery('');
+
+    //also reset the node of focus to what newMrauthId
     setCurrentMrauthId(newMrauthId);
+
     buildRenderGraph(newMrauthId);
   }, [buildRenderGraph]); 
 
-  handleNodeClickRef.current = handleNodeClick;
+   handleNodeClickRef.current = handleNodeClick;
+  // // SAKURA: handleSearch function from main.js (adapted for React)
+  // function handleSearch(event) {
+  //   event.preventDefault();
+    
+  //   if (!searchQuery) return;
+    
+  //   console.log(`Searching for name: ${searchQuery}`);
+  //   const mrauth_id = findIdByName(searchQuery);
+    
+  //   if (mrauth_id) {
+  //     setCurrentMrauthId(mrauth_id);
+  //     buildRenderGraph(mrauth_id, filters);
+  //   } else {
+  //     alert(`Cannot find a match for ${searchQuery}`);
+  //   }
+  // }
 
-  // SAKURA: handleSearch function from main.js (adapted for React)
-  // SAKURA: handleSearch function with better error message
-function handleSearch(event) {
-  event.preventDefault();
-  
-  if (!searchQuery) return;
-  
-  console.log(`Searching for name: ${searchQuery}`);
-  const mrauth_id = findIdByName(searchQuery);
-  
-  if (mrauth_id) {
-    setCurrentMrauthId(mrauth_id);
-    buildRenderGraph(mrauth_id, filters);
-  } else {
-    // SAKURA: error message for exact match requirement
-    alert(
-      `Mathematician "${searchQuery}" not found.\n\n` +
-      `Please enter the full name exactly (case-insensitive).\n` +
-      `Example: "Dio Lewis Holl"\n\n`
-    );
-  }
-}
+  //KEVIN: handleSearch constant to deal with the query
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setShowSuggestions(false);
+    
+    // exact match check first
+    let targetId = findIdByName(searchQuery);
+    
+    if (!targetId) {
+      // try fuzzy search if no exact match found
+      const fuzzyResults = getSuggestions(searchQuery);
+      if (fuzzyResults && fuzzyResults.length > 0) {
+        // take the best match
+        targetId = fuzzyResults[0].id;
+        setSearchQuery(fuzzyResults[0].name); // autocorrect the input
+      }
+    }
+
+    if (targetId) {
+      setCurrentMrauthId(targetId);
+      buildRenderGraph(targetId, filters);
+    } else {
+      alert("Academic not found! Try checking the spelling.");
+    }
+  };
 
   // SAKURA: filter change handler
   function handleFilterChange(newFilters) {
     console.log("Filters updated:", newFilters);
     setFilters(newFilters);
   }
+
+  //KEVIN: autocomplete logic
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+
+    if (value.length > 1) {
+      try {
+        const results = getSuggestions(value);
+        console.log("[autocomplete] query:", value, " -> results:", results);
+        setSuggestions(results);
+        // setSuggestions(true); 
+        setShowSuggestions(results.length > 0);
+      } catch (err){
+        console.error("[autocomplete] getSuggestions error:", err);
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }
+
+  const handleSuggestionClick = (suggestion) => {
+    setSearchQuery(suggestion.name);
+    setShowSuggestions(false);
+    setCurrentMrauthId(false);
+    buildRenderGraph(suggestion.id, filters);
+  }
+
+  // hide suggestions when clicking outside/blurring
+  const handleBlur = () => {
+    // Delay hiding to allow click event on suggestion to fire first
+    setTimeout(() => {
+      setShowSuggestions(false);
+    }, 200);
+  };
 
   // SAKURA: main() function from main.js (converted to useEffect)
   useEffect(() => {
@@ -118,7 +177,7 @@ function handleSearch(event) {
     }
     
     initializeData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [buildRenderGraph, filters]);
 
   // SAKURA: re-render when filters change
   useEffect(() => {
@@ -133,14 +192,31 @@ function handleSearch(event) {
         <form onSubmit={handleSearch} className="search-form">
           <label>
             Enter a name:
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Dio Lewis Holl"
-              autoComplete="off"
-              disabled={isLoading}
-            />
+            <div className="autocomplete-wrapper">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                onFocus={() => searchQuery.length > 1 && setShowSuggestions(true)}
+                placeholder="Dio Lewis Holl"
+                autoComplete="off"
+                disabled={isLoading}
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="suggestions-dropdown">
+                  {suggestions.map((s, index) => (
+                    <div 
+                      key={`${s.id}-${index}`} 
+                      className="suggestion-item"
+                      onClick={() => handleSuggestionClick(s)}
+                    >
+                      <span className="suggestion-name">{s.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </label>
           <button type="submit" disabled={isLoading}>
             Search
@@ -157,11 +233,6 @@ function handleSearch(event) {
 
       <div className="content-container" style={{ display: isLoading ? 'none' : 'flex' }}>
         <div id="container" className="graph-container">
-          {focusedName && (
-            <div className="focused-name-display">
-              {focusedName}
-            </div>
-          )}
           <svg><g/></svg>
         </div>
         
