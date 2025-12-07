@@ -309,6 +309,7 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
 
          // 1. single click feature to highlight
         .on("click", function(event, nodeId) {
+            if (event.detail === 2) return;
 
             const fullNode = graphData.get(nodeId);
 
@@ -330,6 +331,8 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
         
         // 2. double click feature to refocus tree
         .on("dblclick", function(event, nodeId) {
+            event.stopPropagation();
+            event.preventDefault();
 
             console.log("double clicked!", nodeId);
             const fullNode = graphData.get(nodeId);
@@ -340,31 +343,48 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
                 return;
             }
 
+            console.log("Full node data:", fullNode.detail);
+
             // extract mrauth_id and check if it exists
             const mrauthId = fullNode.detail.mrauth_id;
+
+            console.log("mrauth_id:", mrauthId, "Type:", typeof mrauthId);
+
+            // SAKURA: new debug to show error if id is missing then refocus cannot work
             if (mrauthId) {
-                console.log("Refocusing on: ", fullNode.detail.givenName);
+                console.log("Refocusing on:", fullNode.detail.givenName, "ID:", mrauthId);
                 if (onNodeClick) {
+                    console.log("Calling onNodeClick with:", mrauthId);
                     onNodeClick(mrauthId);
+                } else {
+                    console.error("onNodeClick is not defined!");
                 }
-
-            //     //KEVIN: things don't load, so we have to tell them no data
-            //    else {
-            //         alert(`Cannot load tree for ${fullNode.detail.givenName} because they do not graph data.`);
-        
-            //         // shake the node or flash it red to indicate error (requires more CSS)
-            //         d3.select(this).select("rect")
-            //             .transition().duration(100).style("stroke", "red")
-            //             .transition().duration(100).style("stroke", "#ff6b6b");
-            //     }
+            } else {
+                console.error("No mrauth_id found for this node!", fullNode.detail);
+                alert(`Cannot refocus on ${fullNode.detail.givenName} ${fullNode.detail.familyName} - missing ID in database`);
             }
-            
-
         })
+
+        //     if (mrauthId) {
+        //         console.log("Refocusing on: ", fullNode.detail.givenName);
+        //         if (onNodeClick) {
+        //             onNodeClick(mrauthId);
+        //         }
+
+        //     //     //KEVIN: things don't load, so we have to tell them no data
+        //     //    else {
+        //     //         alert(`Cannot load tree for ${fullNode.detail.givenName} because they do not graph data.`);
+        
+        //     //         // shake the node or flash it red to indicate error (requires more CSS)
+        //     //         d3.select(this).select("rect")
+        //     //             .transition().duration(100).style("stroke", "red")
+        //     //             .transition().duration(100).style("stroke", "#ff6b6b");
+        //     //     }
+        //     }
+        // })
         
         //mouseover feature to give additional information on node
-
-        // SAKURA: hover feature for react or yea
+        // SAKURA: hover feature for react
         .on("mouseover", function(event, nodeId) {
             const targetElement = d3.select(event.currentTarget);
             targetElement.raise();
