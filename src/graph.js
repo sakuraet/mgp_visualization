@@ -360,7 +360,6 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
                     `Advisors: ${advisorNames}`,
                     `Shown Descendants: ${descendantCount}`,
                     `Total Descendants: ${nodeData.true_desc_count}`,
-                    `Recorded Descendants: ${descendantCount}`,
                     `School: ${nodeData.school || 'N/A'}`,
                     `Thesis: ${nodeData.thesis || 'N/A'}`
                 ])

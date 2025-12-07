@@ -42,6 +42,7 @@ function Graph() {
     
     if (!myGraphData || myGraphData.size === 0) {
       console.error(`No graph data created for ID: ${mrauth_id}`);
+      // alert("The selected academic does not match the current filters.");
       return;
     }
     
@@ -61,6 +62,13 @@ function Graph() {
   const handleNodeClick = useCallback((newMrauthId) => {
     if (!newMrauthId) return;
     console.log(`Refocusing graph on ID: ${newMrauthId}`);
+
+    //reset the searchQuery as empty ''
+    setSearchQuery('');
+
+    //also reset the node of focus to what newMrauthId
+    setCurrentMrauthId(newMrauthId);
+
     buildRenderGraph(newMrauthId);
   }, [buildRenderGraph]); 
 
