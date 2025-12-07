@@ -9,14 +9,13 @@ let nameSearchSet = null;
 let nameToIdMap = new Map();
 let universitySearchSet = null;
 
-
 //loads all the data and then builds a search function
 
 export async function loadData(params) {
     if (dataCache) return; // we let it pass
 
     try {
-        const response = await fetch("/sample-data/all_academics_merged_full.json")
+        const response = await fetch("/sample-data/all_academics_merged_complete.json")
         if (!response.ok) {
             throw new Error(`HTTP error status: ${response.status}`)
         }
@@ -58,32 +57,8 @@ export async function loadData(params) {
     }
 }
 
-// id finder method, takes the query and should output the specific id
-// SAKURA: this is sus it takes the "best" result but it's not accurate (ex "chyba" will give Jie Du) 
-// prob fix later or whatever
-
-
 //KEVIN : reduced findIdByName to just retrieving the ID
 export function findIdByName(queryName) {
-
-    // //relies on the nameSearchSet to look through for the id
-    // if (!nameSearchSet) {
-    //     console.error("Search index does not yet exist.");
-    //     return null;
-    // }
-
-    // //leverage fuzzysets to approximate the right result
-    // const results = nameSearchSet.get(queryName);
-    // if (!results || results.length === 0) {
-    //     console.warn(`No match found: ${queryName}`);
-    //     return null; //no match
-    // }
-
-    // // we take the BEST result, but it could be expanded upon to give a list of options as well.
-    // const closestResult = results[0][1];
-
-    // return nameToIdMap.get(closestResult.toLowerCase());
-
     return nameToIdMap.get(queryName.toLowerCase());
 }
 
@@ -231,7 +206,6 @@ function addNodeToMap(map, dataCache, id) {
     });
 }
 
-// SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
 // anne: find cohort peers from cached data (people with same advisor)
 function findCohortPeers(rootInternalId, dataCache) {
     const rootAcademic = getAcademicData(dataCache, rootInternalId);
@@ -310,7 +284,6 @@ function findCohortPeers(rootInternalId, dataCache) {
     console.log(`Found ${cohortPeers.length} cohort peers (same advisor)`);
     return cohortPeers;
 }
-// SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
 
 /*
     function: created()
@@ -397,6 +370,7 @@ export function created(rootMrauthId, filters = {}) {
     }
     console.log(`Found internal ID ${rootId} for mrauth_id ${rootMrauthId}`);
     
+    //NEW
     // SAKURA: Check if root passes filters first
     if (!passesFilters(rootId)) {
         console.log(`Root node does not pass filters`);
@@ -413,7 +387,6 @@ export function created(rootMrauthId, filters = {}) {
     // retrieves the edges of the root node
     const rootNode = myMap.get(rootId);
     
-    // SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
     const cohortPeerIds = new Set();
     
     if (showCohortPeers) {
@@ -427,7 +400,6 @@ export function created(rootMrauthId, filters = {}) {
             }
         }
     }
-    // SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
     
     if (rootNode) {
         // SAKURA: go down & add all children (advisees) if showStudents is true
@@ -490,7 +462,6 @@ export function created(rootMrauthId, filters = {}) {
                     }
                 }
             }
-            // SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
         }
 
         // SAKURA: NOW add cohort peers to the map (after identifying them above)
