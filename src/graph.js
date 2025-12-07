@@ -113,8 +113,6 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
         });
     }
 
-    // SAKURA: I WILL KILL MYSELF THIS DOESNT WORK
-    // anne: dont kys u so sexy ahahah...
     // gets the edges that we have in the data
     for (const [key, value] of graphData.entries()) {
         // down children
