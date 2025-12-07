@@ -19,15 +19,17 @@ function Graph() {
     showStudents: true
   });
   const hasLoadedData = useRef(false);
+  const handleNodeClickRef = useRef(null);
 
+  // KEVIN: handleNodeClick function to trigger redraw of graph
   // SAKURA: buildRenderGraph function from main.js (wrapped in useCallback)
   const buildRenderGraph = useCallback((mrauth_id, activeFilters = filters) => {
     if (!mrauth_id) {
       console.error("No ID provided to render.");
       return;
     }
-    
-    console.log(`Building graph for mrauth_id: ${mrauth_id}`);
+
+    console.log(`[Graph.jsx] Requesting build for: ${mrauth_id}`);    
     
     const result = created(mrauth_id, activeFilters);
     
@@ -50,7 +52,9 @@ function Graph() {
     
     console.log(`Data loaded for ${myGraphData.size} nodes. Root ID: ${rootInternalId}. Rendering...`);
     
-    render(myGraphData, rootInternalId, cohortPeerIds || new Set());
+    // SAKURA: correct rootInternalId directly from the created() function
+    // KEVIN: added handleNodeClick for the input
+    render(myGraphData, rootInternalId, handleNodeClickRef.current, cohortPeerIds || new Set());
   }, [filters]);
 
   // // SAKURA: handleSearch function from main.js (adapted for React)
@@ -223,5 +227,4 @@ function Graph() {
     </div>
   );
 }
-
 export default Graph;

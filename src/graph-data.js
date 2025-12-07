@@ -171,10 +171,18 @@ function addNodeToMap(map, dataCache, id) {
         const degreeWithThesis = degrees.find(d => d.thesis_title);
         thesis = degreeWithThesis ? degreeWithThesis.thesis_title : "";
     }
+    // 4. FINDING DESCENDANT COUNT
+    let trueDescCount = "N/A";
+    const descendants = academic?.student_data?.descendants;
+
+    if (descendants && descendants.descendant_count !== undefined) {    
+        trueDescCount = descendants.descendant_count || "0";
+    }
     /*
         KEVIN: More Details to pre-existing details
         1. schools
         2. thesis_title
+        3. descendant count (true, includes the count from MGP which can go beyond our graphData)
 
     */
     const details = {
@@ -183,6 +191,7 @@ function addNodeToMap(map, dataCache, id) {
         yearAwarded: year,
         mrauth_id: academic.mrauth_id,
         internal_id: id,
+        true_desc_count: trueDescCount,
         school: school,
         thesis: thesis 
     };
@@ -388,7 +397,17 @@ export function created(rootMrauthId, filters = {}) {
     }
     console.log(`Found internal ID ${rootId} for mrauth_id ${rootMrauthId}`);
     
-    // SAKURA: add root node to the map (always include the root)
+    // SAKURA: Check if root passes filters first
+    if (!passesFilters(rootId)) {
+        console.log(`Root node does not pass filters`);
+        return { 
+            graphData: new Map(), 
+            rootInternalId: null,
+            cohortPeerIds: new Set()
+        };
+    }
+    
+    // SAKURA: add root node to the map (only if it passes filters)
     addNodeToMap(myMap, dataCache, rootId);
 
     // retrieves the edges of the root node
