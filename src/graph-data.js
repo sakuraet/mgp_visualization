@@ -304,6 +304,8 @@ export function created(rootMrauthId, filters = {}) {
         showStudents = true
     } = filters;
 
+    console.log(`[created] Called with filters:`, { university, yearMin, yearMax, showAdvisors, showCohortPeers, showStudents });
+
     if (!dataCache) {
         console.error("Data not yet loaded, will not make graph.")
         return null;
@@ -317,14 +319,20 @@ export function created(rootMrauthId, filters = {}) {
         // university filter
         if (university && university.trim() !== '') {
             const degrees = academic?.student_data?.degrees || [];
+            const allSchools = degrees.flatMap(d => d.schools || []);
+            const universityLower = university.toLowerCase();
             const matchesUniversity = degrees.some(degree => 
-                degree.schools && degree.schools.some(school => 
-                    school.toLowerCase().includes(university.toLowerCase())
-                )
+                degree.schools && degree.schools.some(school => {
+                    const schoolLower = school.toLowerCase();
+                    // Check both directions: if school contains filter OR filter contains school
+                    return schoolLower.includes(universityLower) || universityLower.includes(schoolLower);
+                })
             );
             if (!matchesUniversity) {
-                console.log(`Filtered out ${academic.given_name} ${academic.family_name}: university mismatch`);
+                console.log(`[Filter] Filtered out ${academic.given_name} ${academic.family_name}: university "${university}" not found in schools:`, allSchools);
                 return false;
+            } else {
+                console.log(`[Filter] Passed ${academic.given_name} ${academic.family_name}: university "${university}" matched in schools:`, allSchools);
             }
         }
 
@@ -370,18 +378,7 @@ export function created(rootMrauthId, filters = {}) {
     }
     console.log(`Found internal ID ${rootId} for mrauth_id ${rootMrauthId}`);
     
-    //NEW
-    // SAKURA: Check if root passes filters first
-    if (!passesFilters(rootId)) {
-        console.log(`Root node does not pass filters`);
-        return { 
-            graphData: new Map(), 
-            rootInternalId: null,
-            cohortPeerIds: new Set()
-        };
-    }
-    
-    // SAKURA: add root node to the map (only if it passes filters)
+    // anne: always add root node to the map (don't filter the root)
     addNodeToMap(myMap, dataCache, rootId);
 
     // retrieves the edges of the root node

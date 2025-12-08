@@ -110,7 +110,8 @@ function Graph() {
 
   // SAKURA: filter change handler
   function handleFilterChange(newFilters) {
-    console.log("Filters updated:", newFilters);
+    console.log("[Graph] Filters updated:", newFilters);
+    console.log("[Graph] Current mrauth_id:", currentMrauthId);
     setFilters(newFilters);
   }
 
@@ -141,8 +142,7 @@ function Graph() {
   const handleSuggestionClick = (suggestion) => {
     setSearchQuery(suggestion.name);
     setShowSuggestions(false);
-    setCurrentMrauthId(false);
-    buildRenderGraph(suggestion.id, filters);
+    // anne: wait for search button click (or pressing enter) to build tree
   }
 
   // hide suggestions when clicking outside/blurring

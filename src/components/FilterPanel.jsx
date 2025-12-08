@@ -20,7 +20,6 @@ const [showUniversitySuggestions, setShowUniversitySuggestions] = useState(false
     const handleFilterChange = (key, value) => {
         const newFilters = { ...filters, [key]: value };
         setFilters(newFilters);
-        onFilterChange(newFilters);
     };
 
 //KEVIN: handle university input with fuzzysearch 
@@ -28,10 +27,9 @@ const [showUniversitySuggestions, setShowUniversitySuggestions] = useState(false
 const handleUniversityChange = (e) => {
         const value = e.target.value;
         
-        // Always update the filter value
+        // anne: update local filter value only
         const newFilters = { ...filters, university: value };
         setFilters(newFilters);
-        onFilterChange(newFilters);
         
         if (value.length > 2) {
             try {
@@ -53,7 +51,6 @@ const handleUniversityChange = (e) => {
     const handleSuggestionClick = (suggestionName) => {
         const newFilters = { ...filters, university: suggestionName };
         setFilters(newFilters);
-        onFilterChange(newFilters);
         setUniversitySuggestions([]);
         setShowUniversitySuggestions(false);
     };
@@ -64,6 +61,11 @@ const handleUniversityChange = (e) => {
         setTimeout(() => {
             setShowUniversitySuggestions(false);
         }, 200);
+    };
+
+    // anne: apply filters button handler
+    const handleApplyFilters = () => {
+        onFilterChange(filters);
     };
 
     return (
@@ -173,6 +175,14 @@ const handleUniversityChange = (e) => {
                     Show Students
                 </label>
             </div>
+
+            {/* anne: apply filters button */}
+            <button 
+                className="apply-button"
+                onClick={handleApplyFilters}
+            >
+                Apply Filters
+            </button>
 
             {/* SAKURA: reset button */}
             <button 
