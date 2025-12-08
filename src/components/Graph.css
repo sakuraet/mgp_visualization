@@ -168,7 +168,7 @@
 
 /* D3/Dagre node and edge styles from Kevin */
 .node rect {
-  fill: #fff;
+  /* anne: removed fill, will be overridden by inline styles from graph.js */
   stroke: #333;
   stroke-width: 1.5px;
 }

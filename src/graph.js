@@ -7,8 +7,18 @@ import * as dagreD3 from 'dagre-d3-es'; //
  render takes the graph data and then renders it using d3 with color coding
 */
 
+// anne: track pending RAF callbacks to cancel them on re-render
+let pendingRafId = null;
+
 // SAKURA: THIS IS ALL CLAUDE SLOP REVISED FOR NOW
 export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()) {
+    
+    // anne: cancel any pending RAF callback from previous render
+    if (pendingRafId !== null) {
+        cancelAnimationFrame(pendingRafId);
+        pendingRafId = null;
+        console.log("Cancelled pending RAF callback from previous render");
+    }
     
     console.log("Render called. Is onNodeClick valid?", typeof onNodeClick); // Should say "function"
 
@@ -36,8 +46,8 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
     if (!nodeCont || nodeCont.getBoundingClientRect().width === 0) {
         console.warn("Container not ready (0px width). Retrying in next frame...");
         
-        // schedule this same function to run again in ~16ms.
-        requestAnimationFrame(() => render(graphData, rootId, onNodeClick)); 
+        // anne: pass cohortPeerIds to the retry call
+        requestAnimationFrame(() => render(graphData, rootId, onNodeClick, cohortPeerIds)); 
         return; 
     }
     
@@ -132,43 +142,15 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
             }
         });
 
-        // anne: advisor edges - skip drawing hierarchical edges for cohort peers in dagre
-        // (will draw manually later to avoid affecting layout)
+        // anne: advisor edges - add all edges for layout, mark cohort peer edges
         value.advisors.forEach(advisorId => {
             if (graphData.has(advisorId)) {
-                // anne: don't draw edge if the current node (key) is a cohort peer
-                if (cohortPeerIds.has(key)) {
-                    console.log(`Skipping edge from advisor ${advisorId} to cohort peer ${key} to maintain level 0 position`);
-                    return; // skip this edge
-                }
-                
-                // anne: edge will be drawn manually after layout
                 graph.setEdge(advisorId, key, {
-                    label: " "
+                    label: " ",
+                    isCohortPeerEdge: cohortPeerIds.has(key) // mark edges to cohort peers
                 });
             }
         });
-    }
-
-    // anne: create a subgraph to group root and cohort peers at same rank
-    if (cohortPeerIds.size > 0) {
-        const rankGroupId = "rank0";
-        graph.setNode(rankGroupId, {
-            label: "",
-            clusterLabelPos: 'top',
-            style: 'fill: none; stroke: none;'  // Invisible container
-        });
-        
-        // anne: add root to the rank group
-        graph.setParent(rootId, rankGroupId);
-        
-        // anne: add all cohort peers to the same rank group
-        for (const peerId of cohortPeerIds) {
-            if (graph.hasNode(peerId) && peerId !== rootId) {
-                graph.setParent(peerId, rankGroupId);
-                console.log(`Added cohort peer ${peerId} to rank group with root`);
-            }
-        }
     }
 
     // set up scene
@@ -191,8 +173,24 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
     // run render to draw graph
     renderer(inner, graph);
     
-    // anne: draw custom curved edges
-    inner.selectAll("g.edgePath path").remove();
+    // anne: force correct colors on all nodes
+    svg.selectAll("g.node rect").attr("style", function(nodeId) {
+        const node = graph.node(nodeId);
+        return node && node.style ? node.style : "";
+    });
+    
+    // anne: remove only the cohort peer edges that were used for layout
+    inner.selectAll("g.edgePath").each(function() {
+        const edgePath = d3.select(this);
+        const edgeData = edgePath.datum();
+        if (edgeData && graph.edge(edgeData.v, edgeData.w)?.isCohortPeerEdge) {
+            edgePath.remove();
+            console.log(`Removed cohort peer edge from ${edgeData.v} to ${edgeData.w}`);
+        }
+    });
+    
+    // anne: completely remove all remaining edgePath groups (we'll draw custom curved ones)
+    inner.selectAll("g.edgePath").remove();
     
     // anne: draw all edges with custom curved paths
     const lineGenerator = d3.line().curve(d3.curveBasis);
@@ -229,6 +227,7 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
             if (graphData.has(advisorId) && !cohortPeerIds.has(key)) {
                 const advisorNode = graph.node(advisorId);
                 if (advisorNode) {
+                    console.log(`[MAIN LOOP] Drawing advisor edge from ${advisorId} to ${key}`);
                     const points = [
                         [advisorNode.x, advisorNode.y],
                         [advisorNode.x, advisorNode.y + (sourceNode.y - advisorNode.y) * 0.33],
@@ -244,63 +243,85 @@ export function render(graphData, rootId, onNodeClick, cohortPeerIds = new Set()
                         .attr("class", "custom-edge")
                         .lower();
                 }
+            } else if (cohortPeerIds.has(key)) {
+                console.log(`[MAIN LOOP] SKIPPING advisor edge from ${advisorId} to cohort peer ${key}`);
             }
         });
     }
     
     // anne: add horizontal lines connecting root to cohort peers and advisor lines for cohort peers
+    // Use requestAnimationFrame to ensure positions and styling are ready
     if (cohortPeerIds.size > 0) {
-        for (const peerId of cohortPeerIds) {
-            if (peerId !== rootId && graph.node(peerId) && graph.node(rootId)) {
-                const rootNode = graph.node(rootId);
-                const peerNode = graph.node(peerId);
-                
-                // anne: horizontal line between root and cohort peer
-                inner.append("line")
-                    .attr("x1", rootNode.x)
-                    .attr("y1", rootNode.y)
-                    .attr("x2", peerNode.x)
-                    .attr("y2", peerNode.y)
-                    .attr("stroke", "#999")
-                    .attr("stroke-width", "2")
-                    .attr("class", "cohort-peer-line")
-                    .lower(); // Send to back so it doesn't cover nodes
-                
-                console.log(`Drew line from root (${rootNode.x}, ${rootNode.y}) to cohort peer ${peerId} (${peerNode.x}, ${peerNode.y})`);
-                
-                // anne: lines from cohort peer to their advisors
-                const peerData = graphData.get(peerId);
-                if (peerData && peerData.advisors) {
-                    peerData.advisors.forEach(advisorId => {
-                        if (graph.node(advisorId)) {
-                            const advisorNode = graph.node(advisorId);
-                            
-                            // anne: create curved path using d3.curveBasis
-                            const lineGenerator = d3.line()
-                                .curve(d3.curveBasis);
-                            
-                            // generate points for the curve (advisor -> peer)
-                            const points = [
-                                [advisorNode.x, advisorNode.y],
-                                [advisorNode.x, advisorNode.y + (peerNode.y - advisorNode.y) * 0.33],
-                                [peerNode.x, peerNode.y - (peerNode.y - advisorNode.y) * 0.33],
-                                [peerNode.x, peerNode.y]
-                            ];
-                            
-                            inner.append("path")
-                                .attr("d", lineGenerator(points))
-                                .attr("stroke", "#999")
-                                .attr("stroke-width", "2")
-                                .attr("fill", "none")
-                                .attr("class", "cohort-advisor-edge")
-                                .lower();
-                            
-                            console.log(`Drew advisor edge from ${advisorId} to cohort peer ${peerId}`);
-                        }
-                    });
+        const drawCohortPeerConnections = () => {
+            console.log(`[RAF CALLBACK] drawCohortPeerConnections called, processing ${cohortPeerIds.size} cohort peers`);
+            // Remove any existing cohort peer lines first to avoid duplicates
+            inner.selectAll(".cohort-peer-line").remove();
+            inner.selectAll(".cohort-advisor-edge").remove();
+            
+            // Re-apply colors to ensure cohort peers have correct color
+            svg.selectAll("g.node rect").attr("style", function(nodeId) {
+                const node = graph.node(nodeId);
+                return node && node.style ? node.style : "";
+            });
+            
+            for (const peerId of cohortPeerIds) {
+                if (peerId !== rootId && graph.node(peerId) && graph.node(rootId)) {
+                    const rootNode = graph.node(rootId);
+                    const peerNode = graph.node(peerId);
+                    
+                    // anne: horizontal line between root and cohort peer
+                    inner.append("line")
+                        .attr("x1", rootNode.x)
+                        .attr("y1", rootNode.y)
+                        .attr("x2", peerNode.x)
+                        .attr("y2", peerNode.y)
+                        .attr("stroke", "#999")
+                        .attr("stroke-width", "2")
+                        .attr("class", "cohort-peer-line")
+                        .lower(); // Send to back so it doesn't cover nodes
+                    
+                    console.log(`Drew line from root (${rootNode.x}, ${rootNode.y}) to cohort peer ${peerId} (${peerNode.x}, ${peerNode.y})`);
+                    
+                    // anne: lines from cohort peer to their advisors
+                    const peerData = graphData.get(peerId);
+                    if (peerData && peerData.advisors) {
+                        peerData.advisors.forEach(advisorId => {
+                            if (graph.node(advisorId)) {
+                                const advisorNode = graph.node(advisorId);
+                                
+                                // anne: create curved path using d3.curveBasis
+                                const lineGenerator = d3.line()
+                                    .curve(d3.curveBasis);
+                                
+                                // generate points for the curve (advisor -> peer)
+                                const points = [
+                                    [advisorNode.x, advisorNode.y],
+                                    [advisorNode.x, advisorNode.y + (peerNode.y - advisorNode.y) * 0.33],
+                                    [peerNode.x, peerNode.y - (peerNode.y - advisorNode.y) * 0.33],
+                                    [peerNode.x, peerNode.y]
+                                ];
+                                
+                                inner.append("path")
+                                    .attr("d", lineGenerator(points))
+                                    .attr("stroke", "#999")
+                                    .attr("stroke-width", "2")
+                                    .attr("fill", "none")
+                                    .attr("class", "cohort-advisor-edge")
+                                    .lower();
+                                
+                                console.log(`[RAF CALLBACK] Drew advisor edge from ${advisorId} to cohort peer ${peerId}`);
+                            }
+                        });
+                    }
                 }
             }
-        }
+        };
+        
+        // only call in requestAnimationFrame to ensure DOM is ready and avoid duplicates
+        pendingRafId = requestAnimationFrame(() => {
+            drawCohortPeerConnections();
+            pendingRafId = null; // clear after execution
+        });
     }
 
     // click feature
