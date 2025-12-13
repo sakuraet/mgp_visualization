@@ -15,7 +15,7 @@ export async function loadData(params) {
     if (dataCache) return; // we let it pass
 
     try {
-        const response = await fetch("/sample-data/all_academics_merged_complete.json")
+        const response = await fetch("/sample-data/everything.json")
         if (!response.ok) {
             throw new Error(`HTTP error status: ${response.status}`)
         }
@@ -474,10 +474,17 @@ export function created(rootMrauthId, filters = {}) {
     
     console.log(`Graph created with ${myMap.size} nodes (filters applied: university="${university}", years=${yearMin}-${yearMax}, advisors=${showAdvisors}, students=${showStudents}, cohort peers=${cohortPeerIds.size})`);
     
-    // SAKURA: return both the map, root internal ID, and cohort peer IDs
+    // SAKURA: checks if the focus node is filtered out
+    let rootFilteredOut = false;
+
+    if (!passesFilters(rootId)) {
+        rootFilteredOut = true;
+    }
+
     return { 
         graphData: myMap, 
         rootInternalId: rootId,
-        cohortPeerIds: cohortPeerIds
+        cohortPeerIds: cohortPeerIds,
+        rootFilteredOut
     };
 }

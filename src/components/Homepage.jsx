@@ -1,20 +1,30 @@
-import React from 'react';
-import Graph from './Graph';  
+import React, { useState } from 'react';
+import Graph from './Graph';
 import './Homepage.css';
 
 function Homepage() {
+  const [viewMode, setViewMode] = useState('graph'); // 'graph' or 'map'
+  
   return (
     <div className="homepage">
       <div className="homepage-container">
         <header className="homepage-header">
           <h1 className="homepage-title">Mathematics Genealogy Project</h1>
         </header>
-
-        <Graph />
-
+        
+        {/* Pass viewMode props to Graph component */}
+        <Graph 
+          viewMode={viewMode} 
+          onViewModeChange={setViewMode}
+        />
+        
         <div className="info-section">
           <div className="info-card">
             <h3>Features</h3>
+            <p>
+              <strong>View Mode</strong>: Switch between Graph View and Map View using the toggle in the filter panel.
+              Map View shows mathematicians positioned at their university locations with connections between them.
+            </p>
             <p>
               <strong>Hover</strong>: To learn more about a mathematician, hover over their node to see details such as
               their name, thesis, institution, and year of graduation.
